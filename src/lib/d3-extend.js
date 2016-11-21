@@ -49,7 +49,7 @@ d3.metaForce = function(links) {
             for (var k = 0, n = metaLinks.length; k < iterations; ++k) {
                 for (var i = 0, mlink, source, target, x, y, l, b; i < n; i++) {
                     mlink = metaLinks[i], source = find(nodeById, mlink.source.group), target = find(nodeById, mlink.target.group);
-                    // console.log(source.children);
+
                     var x1 = 0,
                         y1 = 0,
                         x2 = 0,
@@ -70,17 +70,11 @@ d3.metaForce = function(links) {
                     y2 = y2 / (target.children.length)
                     x = x2 - x1
                     y = y2 - y1
-                    // console.log(x,y);
                     l = Math.sqrt(x * x, y * y)
-                    // console.log(strengths[i]);
                     l = (l - distances[i]) / l * alpha * strengths[i];
-                    // console.log(l);
                     x *= l, y *= l;
                     b = bias[i]
-                    debugger
                     target.children.forEach(n => {
-
-                        console.log(x*b,y*b);
                         n.vx -= x * b;
                         n.vy -= y * b;
                     })

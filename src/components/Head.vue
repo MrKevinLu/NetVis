@@ -1,15 +1,11 @@
 <template lang="html">
     <div class="header">
-        {{ titleContent }}
-        <div class="">
-            <input type="text" v-model="key">
-            <input type="text" v-model="value">
-            <button type="button" @click="addObject">add</button>
-            <span v-for="i in arr">{{ i }}</span>
-        </div>
-        <div class="">
-            <p v-for="(value, key) in profile">{{ key }}:{{value}} </p>
-        </div>
+        <span class="title">{{ title }}</span>
+        <!-- <button class="help" name="button">Help</button> -->
+
+        <!-- <el-row>
+          <el-col :span="24"><div class="grid-content title">{{ title }}</div></el-col>
+        </el-row> -->
     </div>
 
 </template>
@@ -18,44 +14,43 @@
 import {set} from 'vue'
 
 export default {
-    props:['titleContent'],
-    data(){
+    props: ['titleContent'],
+    data() {
         return {
-            key:"",
-            value:"",
-            arr:[],
-            // test:"",
-            profile:{
-                name:"lbb",
-                age:18
-            }
+            title: "DMNVis"
         }
     },
-    updated:function(){
+    updated: function() {
         console.log("updated head");
     },
-    methods:{
-        addObject:function(){
-            // this.test = Math.random();
-            this.arr.push(Math.floor(Math.random()));
-            // if(this.key.trim() && this.value.trim()){
-            //     this.profile[this.key] = this.value;
-            //     this.key = "";
-            //     this.value = "";
-            //     // this.profile.sex = "M"
-            //     // this.$set(this.profile, 'sex', "M")
-            //     // console.log(this.profile);
-            // }
-        }
+    methods: {
+
     }
 
 };
 </script>
 
-<style lang="css">
-    .header{
-        width:100%;
-        background-color: grey;
-        text-align: center;
-    }
+<style lang="css" scoped>
+.header {
+    width:100%;
+    /*position:relative;*/
+    /*box-sizing: border-box;*/
+    border-radius: 4px;
+    line-height: 35px;
+    color:#dbd9d9;
+    background-color: #686767;
+    margin-bottom: 5px;
+}
+
+.title{
+    display: inline-block;
+    padding-left: 20px;
+}
+
+/*.help{
+    width:60px;
+    height:25px;
+    border-radius: 4px;
+    float: right;
+}*/
 </style>

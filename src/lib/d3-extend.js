@@ -107,7 +107,7 @@ d3.metaForce = function(links) {
             count[link.source.index] = (count[link.source.index] || 0) + 1;
             count[link.target.index] = (count[link.target.index] || 0) + 1;
         }
-        console.log(count);
+        // console.log(count);
         for (i = 0, bias = new Array(m); i < m; ++i) {
             link = metaLinks[i], bias[i] = count[link.source.index] / (count[link.source.index] + count[link.target.index]);
         }
@@ -121,7 +121,7 @@ d3.metaForce = function(links) {
         for (var i = 0, n = metaLinks.length; i < n; ++i) {
             strengths[i] = +strength(metaLinks[i], i, links);
         }
-        console.log(strengths);
+        // console.log(strengths);
     }
 
     function initializeDistance() {

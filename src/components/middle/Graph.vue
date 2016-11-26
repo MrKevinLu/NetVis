@@ -22,17 +22,20 @@ export default {
     },
 
     computed: {
-        nodes() {
-            return this.$store.state.nodes
-        },
-        links() {
-            return this.$store.state.links
-        },
         graph() {
-            return {
-                nodes: [...this.$store.state.nodes],
-                links: [...this.$store.state.links]
-            }
+            return this.$store.state.graph
+        },
+        prop_data() {
+            return this.$store.state.prop_data
+        },
+        currentTime(){
+            return this.$store.state.currentTime
+        },
+        nodes(){
+            return this.$store.state.graph[this.$store.state.currentTime].nodes
+        },
+        links(){
+            return this.$store.state.graph[this.$store.state.currentTime].links
         }
     },
 
@@ -42,10 +45,7 @@ export default {
 
     watch: {
         graph: function() {
-            // console.log('graph changed');
-            // console.log(this.graph);
-            // this.detectCommunity();
-            this.drawCanvas();
+            // this.drawCanvas();
             // this.draw();
         }
     },
@@ -84,18 +84,14 @@ export default {
                     target: id_index[l.target]
                 };
             }));
-            // console.log(id_index);
             var community_assignment_result = this.community();
             this.communityResult
-            // console.log(community_assignment_result);
             var max_community_number = 0;
             this.nodes.forEach((d, i) => {
                 d.community = community_assignment_result[i];
                 max_community_number = max_community_number < community_assignment_result[i] ? community_assignment_result[i] : max_community_number;
             })
             console.log(max_community_number);
-            // console.log(d3.schemeCategory20);
-            //
             // var color = d3.scaleOrdinal()
             //     .domain(d3.range(max_community_number))
             //     .range(d3.schemeCategory20);
@@ -108,11 +104,7 @@ export default {
             //     });
         },
 
-        reset: function() {
-            d3.selectAll('.node')
-                .data(this.nodes)
-                .attr('fill', '#a30500');
-        },
+
         drawCanvas: function() {
             var canvas = document.querySelector("canvas"),
                 context = canvas.getContext("2d"),
@@ -131,9 +123,9 @@ export default {
                 .domain([0, height])
                 .range([height, 0]);
 
-            // var zoom = d3.zoom()
-            //     .scaleExtent([1, 8])
-            //     .on("zoom", zoomed);
+            var zoom = d3.zoom()
+                .scaleExtent([1, 8])
+                .on("zoom", zoomed);
             // console.log(d3.schemeCategory20);
             //
             var color = d3.scaleOrdinal()
@@ -150,7 +142,7 @@ export default {
                 .force("metaForce", d3.metaForce().id(function(d){
                     return d.group
                 }))
-                .force("charge", d3.forceManyBody().strength(-30))
+                .force("charge", d3.forceManyBody().strength(-2))
                 .force("center", d3.forceCenter(width / 2, height / 2));
 
             simulation
@@ -163,25 +155,30 @@ export default {
             //     .links(links);
             // console.log(initialMetaLinks(links));
 
-            d3.select(canvas)
-                .call(d3.drag()
+            var c = d3.select(canvas)
+                    .call(d3.drag()
                     .container(canvas)
                     .subject(dragsubject)
                     .on("start", dragstarted)
                     .on("drag", dragged)
-                    .on("end", dragended));
+                    .on("end", dragended))
+                    .call(zoom);
+                    // .call(zoom.transform, transform);
+                    // .call(zoom.translateBy(selection, x, y) )
             // .call(zoom);
+
 
             function ticked() {
                 draw()
             }
-
+            console.log(nodes.length);
             function draw() {
                 context.clearRect(0, 0, width, height);
-
+                context.fillStyle = "#665e5e"
+                context.fillRect(0,0,width,height)
                 context.beginPath();
                 links.forEach(drawLink);
-                context.strokeStyle = "#aaa";
+                context.strokeStyle = "#726d6d";
                 context.stroke();
 
                 // context.beginPath();
@@ -217,22 +214,30 @@ export default {
                 context.lineTo(d.target.x, d.target.y);
             }
 
-            function drawNode(d) {
+            function drawNode(d,i) {
                 context.beginPath();
                 context.fillStyle = color(d.community)
+                if(i==10){
+                    // console.log(d.x, d.y);
+                }
                 context.moveTo(d.x + 3, d.y);
-                context.arc(d.x, d.y, 3, 0, 2 * Math.PI);
+                context.arc(d.x, d.y, 2, 0, 2 * Math.PI);
                 context.fill()
-                context.strokeStyle = "#fff";
-                context.stroke();
+                // context.strokeStyle = "#fff";
+                // context.stroke();
             }
 
 
+            function transform(){
+                console.log(this);
+                return 0;
+            }
+            function zoomed() {
 
-            // function zoomed() {
-            //     context.clearRect(0, 0, width, height);
-            //     draw();
-            // }
+                context.clearRect(0, 0, width, height);
+
+                draw();
+            }
 
         },
         draw: function() {
@@ -352,9 +357,7 @@ export default {
                 d.fy = null;
             }
 
-            function boundLimitForce() {
 
-            }
         }
 
     }

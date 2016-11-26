@@ -17,7 +17,6 @@
 
 <script>
 import NetGraph from './middle/Graph.vue'
-import PartionLine from './Partion.vue'
 import NetStat from './middle/Statistic.vue'
 export default {
     data() {

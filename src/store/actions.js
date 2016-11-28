@@ -5,7 +5,7 @@ const PROPERTY_PATH = "../../data/node_attrs.json"
 
 export const getAllData = ({commit}) => {
     Promise.all([getGraphData(), nodeAttrsData()]).then(function(data) {
-        console.log(data);
+        // console.log(data);
         commit(types.GET_ALL_DATA, data)
     })
 }

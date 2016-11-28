@@ -73,7 +73,7 @@ export default {
                     scale:scales[attr]
                 }
             })
-            console.log(series);
+            // console.log(series);
             this.scales = scales;
             this.series = series;
             // console.dir(scales);
@@ -159,7 +159,7 @@ export default {
         }
     },
     mounted() {
-        console.log(this.times);
+        // console.log(this.times);
         // console.log(this.g_prop_data);
     },
     components: {}

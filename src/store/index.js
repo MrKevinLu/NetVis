@@ -42,7 +42,13 @@ const getters = {
         // console.log("+++++++++++");
         return state.graph?Object.keys(state.graph).sort((a,b)=>a-b):[];
     },
-
+    // i_attr_scale:(state,getters)=>{
+    //     var index_prop = this.index_prop;
+    //     var scales = {};
+    //     Object.keys(this.index_prop).forEach(d=>{
+    //         scales[index_prop[d]] =
+    //     })
+    // },
     g_attr_data:(state, getters)=>{
         if(state.attr_data == "") return;
         var attr_data = state.attr_data,

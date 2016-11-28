@@ -10,7 +10,7 @@
         </div>
 
         <div class="colum main-right">
-            123
+            <net-individual></net-individual>
         </div>
     </div>
 </template>
@@ -18,6 +18,7 @@
 <script>
 import NetGraph from './middle/Graph.vue'
 import NetStat from './middle/Statistic.vue'
+import NetIndividual from './right/Individual.vue'
 export default {
     data() {
         return {};
@@ -28,7 +29,8 @@ export default {
     methods: {},
     components: {
         NetGraph,
-        NetStat
+        NetStat,
+        NetIndividual
     }
 };
 </script>

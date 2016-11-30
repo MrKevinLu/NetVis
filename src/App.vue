@@ -24,8 +24,10 @@ export default {
 
 <style lang="css" scoped>
     .container{
-        width:1304px;
-        height:710px;
+        display:flex;
+        flex-direction:column;
+        width:1400px;
+        height:800px;
         margin:0 auto;
     }
 </style>

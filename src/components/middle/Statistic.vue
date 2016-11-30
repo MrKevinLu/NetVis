@@ -115,8 +115,8 @@ export default {
                     // lineColor:"red"
                 },
                 legend: {
-                    layout: 'vertical',
-                    align: 'right',
+                    // layout: 'vertical',
+                    // align: 'right',
                     verticalAlign: 'top',
                     borderWidth: 0,
                     margin:10
@@ -168,8 +168,8 @@ export default {
 
 <style lang="css" scope>
     #statistic{
+        flex:1;
         width:100%;
-        height:168px;
         /*background-color: lightgrey;*/
     }
     .highcharts-background{

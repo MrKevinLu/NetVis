@@ -1,7 +1,7 @@
 <template lang="html">
     <div class="individual">
         <div id="individual_1" class="i_container">
-            <svg width=550 height=335>
+            <svg>
                 <!-- <transition-group name="list" tag="p"> -->
                     <!-- <p v-for="i in nodes" v-bind:key="i">{{i}}</p> -->
                     <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :timeScale="timeScale" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr'></node>
@@ -12,7 +12,7 @@
             <!-- <svg width=550 height=335 id="svg2">
             </svg> -->
         </div>
-        <button id="change">change</button>
+        <!-- <button id="change">change</button> -->
     </div>
 </template>
 
@@ -133,50 +133,11 @@ export default {
     },
     methods: {
         updateDate(){
-            // var randomData = d3.range(7).map(d=>{
-            //     var id = Math.floor(d3.randomUniform(0,1500)());
-            //     var data = d3.randomUniform(1,10)();
-            //     return {
-            //         id,
-            //         data
-            //     }
-            // })
-            // console.log(randomData);
-            //
-            // var update = d3.selectAll("#svg2 circle").data(randomData,function(d){return d.id});
-            var div = d3.selectAll("#individual_2 div").data([1, 2, 4, 8, 16, 32], function(d) { return d; });
-            div.enter().append("div").text(function(d) { return d; });
-            div.exit().remove();
 
-            // update.enter().append("circle")
-            //     .attr("cx",function(d){
-            //         return d.data*20;
-            //     })
-            //     .attr("cy",function(d){
-            //         return d.data*20;
-            //     })
-            //     .attr("r",5)
-            //     .attr("fill","red");
-            //
-            // update.exit().remove();
 
         },
         draw(){
-            var div = d3.select("#individual_2")
-                        .selectAll("div")
-                        .data([4, 8, 15, 16, 23, 42])
-                        .enter().append("div")
-                        .text(function(d) { return d; });
 
-            d3.select("#change").on("click",function(){
-                div = d3.selectAll("#individual_2 div").data([1, 2, 4, 8, 16, 32], function(d) { return d; });
-
-                div.exit().remove();
-                div.enter().append("div").text(function(d) { return d; });
-            })
-            // var selected = this.individual_1,
-            //     extent = this.t_extent_1,
-            //     width = d3.select
 
         }
     },
@@ -191,13 +152,19 @@ export default {
         display:flex;
         flex-direction:column;
         width:100%;
-        height:670px;
+        flex:1
+        /*height:670px;*/
     }
     #individual_1{
         flex:1;
     }
     #individual_2{
         flex:1;
+    }
+    .demo{
+        /*flex:0;*/
+        width:100%;
+        height:200px;
     }
     /*.list-item {
       display: inline-block;

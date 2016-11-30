@@ -33,8 +33,6 @@ export default {
 <style lang="css" scoped>
 .header {
     width:100%;
-    /*position:relative;*/
-    /*box-sizing: border-box;*/
     border-radius: 4px;
     line-height: 35px;
     color:#dbd9d9;

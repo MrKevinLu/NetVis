@@ -1,7 +1,8 @@
 <template lang="html">
     <div class="main clearfx">
+
         <div class="colum main-left">
-            123
+            <sort-view></sort-view>
         </div>
 
         <div class="colum main-middle">
@@ -19,6 +20,7 @@
 import NetGraph from './middle/Graph.vue'
 import NetStat from './middle/Statistic.vue'
 import NetIndividual from './right/Individual.vue'
+import SortView from './left/SortView.vue'
 export default {
     data() {
         return {};
@@ -30,7 +32,8 @@ export default {
     components: {
         NetGraph,
         NetStat,
-        NetIndividual
+        NetIndividual,
+        SortView
     }
 };
 </script>
@@ -38,28 +41,35 @@ export default {
 <style lang="css" scoped>
 
 .main{
+    display:flex;
+    align-items:stretch;
     width:100%;
+    flex:1;
     box-sizing: border-box;
     border:2px solid grey;
 }
 
-.colum{
+/*.colum{
     float:left;
     box-sizing: border-box;
-    height:670px;
-}
+
+}*/
 
 .main-left{
+    flex:1;
     border-right: 2px solid grey;
-    width:200px;
 }
 
 .main-middle{
+    display:flex;
+    flex-direction:column;
     border-right: 2px solid grey;
     width:550px;
 }
 .main-right{
-    width:550px;
+    width:650px;
+    display:flex;
+    flex-direction:column;
 }
 .clearfx::after{
     content:"";

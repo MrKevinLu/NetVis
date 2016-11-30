@@ -1,6 +1,6 @@
 <template lang="html">
-    <div class="">
-        <canvas width="548" height="500"></canvas>
+    <div class="contextCanvas">
+        <canvas width="550" height="500"></canvas>
     </div>
 
 </template>
@@ -364,7 +364,11 @@ export default {
 };
 </script>
 
-<style lang="css">
+<style lang="css" scoped>
+    .contextCanvas{
+        width:100%;
+        height:550px;
+    }
     circle:hover{
         fill: red
     }

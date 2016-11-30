@@ -10,6 +10,10 @@ export const getAllData = ({commit}) => {
     })
 }
 
+export const changeLocalTArray = ({commit},data)=>{
+    commit(types.CHANGE_LOCAL_T_ARRAY, data)
+}
+
 const changeTime = ({commit},time)=>{
     commit(types.CHANGE_TIME, time)
 }

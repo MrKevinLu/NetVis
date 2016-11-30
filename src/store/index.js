@@ -3,8 +3,8 @@ import Vuex from 'vuex'
 import * as actions from './actions'
 import * as types from './mutation-types'
 import mutations from './mutations'
-
-
+import d3 from '../lib/d3-extend'
+// const Times =
 // var data = fs.readFileSync('../../data/graph.json');
 
 const state = {
@@ -12,6 +12,9 @@ const state = {
     attr_data:"",
     currentTime:"2010",
     clickNode:"",
+    local_t_array: d3.range(27).map((d, i) => {
+        return 1990 + i + "";
+    }),
     index_prop:{
         0:"a_deg",      // 总的节点度，非时变
         1:"a_pub",        // 总的发表量，非时变
@@ -39,16 +42,9 @@ const state = {
 
 const getters = {
     times:(state,getters)=>{
-        // console.log("+++++++++++");
         return state.graph?Object.keys(state.graph).sort((a,b)=>a-b):[];
     },
-    // i_attr_scale:(state,getters)=>{
-    //     var index_prop = this.index_prop;
-    //     var scales = {};
-    //     Object.keys(this.index_prop).forEach(d=>{
-    //         scales[index_prop[d]] =
-    //     })
-    // },
+    // 全网属性
     g_attr_data:(state, getters)=>{
         if(state.attr_data == "") return;
         var attr_data = state.attr_data,
@@ -106,8 +102,6 @@ const getters = {
                 l_growth_rate: +(((l_links - preLinks) / preLinks) * 100).toFixed(1)
             }
 
-            // console.log(g_attr_data[t]["n_growth_rate"], g_attr_data[t]["l_growth_rate"]);
-            // console.log(l_nodes, preNodes);
             // 重新初始化
             preNodes = l_nodes,
                 preLinks = l_links,
@@ -122,9 +116,37 @@ const getters = {
                 l_growth_rate = 0;
 
         }
-        // console.dir(g_attr_data);
-        // state.g_attr_data = g_attr_data;
+
         return g_attr_data;
+    },
+
+    // 各个属性的1/4 和 3/4位点
+    attr_quantile(state,getters){
+        var attr_data = state.attr_data;
+
+        if(attr_data == "") return;
+        var prop_domains={},
+            prop_quantile = {},
+            index_prop = state.index_prop;
+        Object.keys(index_prop).forEach(i=>{
+            prop_domains[index_prop[i]] = [];
+            prop_quantile[index_prop[i]] = [];
+        })
+        for(let t in attr_data){
+            for(let name in attr_data[t]){
+                var values = attr_data[t][name];
+                for(let [i,v] of values.entries()){
+                    prop_domains[index_prop[i]].push(v)
+                }
+            }
+        }
+        for(let attr in prop_domains){
+            var values = prop_domains[attr].sort((a,b)=>a-b);
+            var quantile_1 = d3.quantile(values,0.25),
+                quantile_3 = d3.quantile(values,0.75);
+            prop_quantile[attr].push(quantile_1,quantile_3);
+        }
+        return prop_quantile;
     }
 }
 

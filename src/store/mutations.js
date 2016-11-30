@@ -6,6 +6,10 @@ export default {
         state.attr_data = data[1];
     },
 
+    [types.CHANGE_LOCAL_T_ARRAY](state,data){
+        state.local_t_array = data;
+    },
+
     [types.CHANGE_TIME](state,data){
         state.currentTime = data;
     }

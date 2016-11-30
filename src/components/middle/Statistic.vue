@@ -166,7 +166,7 @@ export default {
 };
 </script>
 
-<style lang="css" scope>
+<style lang="css" scoped>
     #statistic{
         flex:1;
         width:100%;

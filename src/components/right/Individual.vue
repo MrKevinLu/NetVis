@@ -6,20 +6,19 @@
                         <g id="axis-container">
 
                         </g>
+                        <g class="path-group">
+                            <edge v-for="(l,index) in links" :key="index" :path_group="l" :local_timeScale="local_timeScale" :orderAttr='orderAttr'></edge>
+                        </g>
                         <g class="node-group">
                             <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr'></node>
                         </g>
                     </g>
-                <!-- <transition-group name="list" tag="p"> -->
-                    <!-- <p v-for="i in nodes" v-bind:key="i">{{i}}</p> -->
-                <!-- </transition-group> -->
             </svg>
+            <button class="changeOrder" @click="changeOrder">{{orderAttr}}</button>
         </div>
         <div id="individual_2" class="i_container">
-            <!-- <svg width=550 height=335 id="svg2">
-            </svg> -->
-        </div>
 
+        </div>
     </div>
 </template>
 
@@ -27,6 +26,9 @@
 import d3 from '../../lib/d3-extend'
 import Highcharts from 'highcharts'
 import Node from './Node.vue'
+import Edge from './Link.vue'
+import jLouvain from '../../lib/jLouvain'
+// import dat from 'dat.gui'
 import {mapActions,mapGetters} from "vuex"
 
 const index_prop = {
@@ -45,12 +47,9 @@ export default {
     data() {
         return {
             time_range: ["1990", "2016"],  // 总的时间范围
-            t_extent_2: [],
-            individual_1: "",
-            individual_2: "",
             orderAttr: "cluster",
             selected: "Kwan-Liu Ma",
-            mapAttr: "t_pub",
+            mapAttr: "isNew",
             local_y_scale:"",
             is_axis_drawed:false,
             svgWidth: 650,
@@ -136,54 +135,197 @@ export default {
             // console.log(coNodes);
             return coNodes;
         },
+        links(){
+            var nodes = this.nodes,
+                local_t_array = this.local_t_array,
+                coNames,
+                coNames_seq = {},
+                links = [];
+            // console.log(nodes);
+            for(let n of nodes){
+                // coNames.add(n.data.name)
+                coNames_seq[n.data.name] = []
+            }
+            coNames = Object.keys(coNames_seq);
+            // 构建每个合作时间序列{name1:[...],name2:[...]}
+            for(let author of coNames){
+                for(let n of nodes){
+                    if(n.data.name == author){
+                        coNames_seq[author].push(n)
+                    }
+                }
+            }
+            // 对每个合作者的合作时间序列进行排序
+            for(let author of coNames){
+                coNames_seq[author].sort((a,b)=>a.time-b.time)
+                // console.log(coNames_seq[author]);
+            }
+            //标记是否首次出现、连续出现、曾经出现
+            for(let author of coNames){
+                var seq = coNames_seq[author],
+                    len = seq.length;
+                for(let [i,n] of seq.entries()){
+                    if(i==0) n.isPreExsit = 2;      // 第一次出现
+                    else if(n.time-seq[i-1].time==1){
+                        n.isPreExsit = 1;   // 连续出现
+                    }else{
+                        n.isPreExsit = 3;   // 曾经出现
+                    }
+                }
+            }
+
+            // 构建links,每个元素都是一个序列
+            for(let author of coNames){
+                var tmp_arr = [],
+                    last_time;
+                // console.log(coNames_seq[author]);
+                if((coNames_seq[author]).length<=1) continue;
+                var seq = coNames_seq[author],
+                    len = seq.length;
+                for(let [i,n] of seq.entries()){
+                    if(tmp_arr.length==0){  // 临时数组长度为0直接添加元素
+                        tmp_arr.push(n);
+                        last_time = n.time;
+                        // continue;
+                    }else{
+                        if(n.time-last_time==1){    // 判断是否与临时数组连续
+                            last_time = n.time; // 更换临时数组中最后一个元素的时间
+                            tmp_arr.push(n)
+                            // continue;
+                        }else{              // 如果不连续，判断临时数组个数是否大于1，若大于1，能够形成路径，添加至links；否则重置临时数组
+                            n.isPreExist = false;
+                            if(tmp_arr.length>1){
+                                links.push(tmp_arr);
+                            }
+                            else{
+                                tmp_arr = [n];
+                                last_time = n.time;
+                                // continue;
+                            }
+                        }
+                    }
+
+                    if(i == len-1 && tmp_arr.length>1){         // 判断循环结束时临时数组是否大于两个元素
+                        links.push(tmp_arr);
+                    }
+                }
+            }
+            return links;
+        },
+
         attr_data(){
             return this.$store.state.attr_data;
-        },
-        // 获取个体中心网络中的属性比例尺
-        i_scales() {
-            var attr_data = this.$store.state.attr_data;
-            if (attr_data == "") return;
-
-            var index_prop = this.$store.state.index_prop;
-            var i_scales = {};
-            var domains = {};
-            Object.keys(index_prop).forEach(k => {
-                i_scales[index_prop[k]] = d3.scaleLinear().range([30, 300])
-                domains[index_prop[k]] = [];
-            });
         }
     },
     mounted() {
         d3.select(".wrap-g").attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
         d3.select(".wrap-g .node-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
-
+        d3.select(".wrap-g .path-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
     },
     watch: {
         orderAttr:function(n,o){
-            // this.node_classified(n);   // 节点按属性值归类排号
+            console.log(n);
+            this.node_classified(n);   // 节点按属性值归类排号
         },
         nodes: function(n, o) {
-            this.node_classified();
+            // this.sortByCluster();
+            this.node_classified(this.orderAttr);
+            // console.log(this.links);
             if(!this.is_axis_drawed){
                 this.is_axis_drawed = true;
                 this.drawAxis();
             }
-        },
-        i_scales: function(n) {
-
-        },
-        timeScale: function(n) {
-
-        },
-        local_timeScale:function(n,o){
-            // console.log("change scale");
         }
+
     },
     methods: {
         ...mapActions([
             "changeLocalTArray"
         ]),
-        node_classified(orderAttr="a_pub"){
+        changeOrder(){
+            var index = Math.floor(Math.random()*8);
+            this.orderAttr = index_prop[index]
+        },
+        sortByCluster(){
+            var nodes = this.nodes,
+                t_nodes = {},
+                times = Array.from(new Set(nodes.map(d=>d.time))).sort((a,b)=>a-b),  // 获取存在合作者的时间戳
+                graph = this.$store.state.graph;
+            for(let t of times) t_nodes[t] = [];
+            for(let n of nodes) t_nodes[n.time].push(n.data);
+            for(let t in t_nodes){
+                var sub_nodes = t_nodes[t],
+                    sub_links = [],
+                    global_links = graph[t].links;
+                var temp_i_name = {},
+                    authors = {};
+                sub_nodes.forEach((n,i)=>{
+                    temp_i_name[i] = n;
+                    authors[n.name] = i;
+                })
+                // console.log(authors);
+                for(let l of global_links){
+                    // console.log(l.source, l.target);
+                    var source = typeof l == 'obejct'?l.source.name:l.source,
+                        target = typeof l == 'obejct'?l.target.name:l.target,
+                        weight = l.weight;
+                    if(source in authors && target in authors){
+                        sub_links.push({
+                            source:authors[source],
+                            target:authors[target],
+                            weight
+                        })
+                    }
+                }
+                // if(t=="2005") console.log(sub_nodes);
+                // console.log(sub_nodes);
+                // console.log(sub_links);
+                var community = jLouvain().nodes(sub_nodes.map((d,i)=>{
+                        return i;
+                    })).edges(sub_links);
+                var result = community();
+                if(result==0){
+                    var startIndex = 1;
+                    sub_nodes.forEach((n,i)=>{
+                        n.cluster = {};
+                        n.cluster.gIndex = i+1;
+                        n.cluster.index = (startIndex++);
+                        n.cluster.tIndex = n.cluster.index;
+                        n.cluster.len = sub_nodes.length;
+                        n.cluster.numOfG = sub_nodes.length;
+                        n.cluster.local_num_group = 1;
+                    })
+                }else{
+                    var i_gIndex_arr = Object.keys(result).map(i=>{
+                                            return [i,result[i]]
+                                        }).sort((a,b)=>a[1]-b[1]);
+                    // console.dir(result);
+                    // var mapByName = d3.map(sub_nodes,function(d){return d.name;})
+                    var preGIndex = 0,
+                        start = 1;
+                    for(let [i,n] of i_gIndex_arr.entries()){
+                        var [index,gIndex] = [n[0],n[1]];
+
+                        if(gIndex!=preGIndex){
+                            preGIndex = gIndex;
+                            start = 1;
+                        }
+                        var node = temp_i_name[index];
+                        node.cluster = {};
+                        node.cluster.gIndex = +gIndex+1;
+                        node.cluster.index = start++;
+                        node.cluster.tIndex = (+i)+1;
+                        node.cluster.local_num_group = i_gIndex_arr.filter(d=>d[1]==gIndex).length;
+                        node.cluster.numOfG = new Set(i_gIndex_arr.map(d=>d[1])).size;
+                        node.cluster.len = i_gIndex_arr.length;
+                        // console.log(node.cluster);
+                    }
+                }
+            }
+            this.sortInGroup(t_nodes);
+
+        },
+        sortByAttr(orderAttr){
             var nodes = this.nodes,
                 attr_data = this.attr_data,
                 local_t_array = this.local_t_array,
@@ -191,7 +333,6 @@ export default {
                 prop_index = {},    // 属性名-序号的映射
                 t_g_num = {},   // 存储每年不同组的节点个数
                 t_nodes = {};   // 按年存节点
-            console.log(attr_quantile);
             for(let i in index_prop){
                 prop_index[index_prop[i]] = i
             }
@@ -230,34 +371,113 @@ export default {
                 })
                 temp_nodes.forEach(n=>{
                     n.group.len = t_g_num[t][n.group.gIndex];
-                    // console.log(n);
                 })
             }
-
-            // 计算坐标
-            this.cal_cordinate();
-
-
         },
-        cal_cordinate(){
-            var item_padding = 2,
-                r = 3,
-                nodes = this.nodes,
-                height = 308;
 
-            var scale = d3.scalePoint()
-                         .padding(1)
-                         .domain([1,2,3])
-                         .range([height,0])
-            for(let n of nodes){
-                var groupIndex = n.data.group.gIndex,
-                    len = n.data.group.len,
-                    index = n.data.group.index;
-                var i_y = scale(groupIndex)-((len-1)/2*(item_padding+r))+(index-1)*(item_padding+2*r);
-                n.i_y = i_y;
-                console.log(i_y);
+        // 为了减少边交叉，对group内的节点进行排序，排序规则：1. 同一个group内，连续出现的节点在其他节点之前 2.连续出现的节点顺序保持与前一时刻一致 3.非连续节点出现位置随意
+        sortInGroup(t_nodes){
+            var orderAttr = this.orderAttr;
+            if(orderAttr == 'cluster'){
+                var count = 0,
+                    preNodes;
+                for(let t in t_nodes){
+                    var sub_nodes = t_nodes[t];
+                    sub_nodes.sort((a,b)=>{
+                        // 先按子群中孩子节点个数排序，再根据子群编号排序
+                        if(a.cluster.local_num_group != b.cluster.local_num_group){
+                            return b.cluster.local_num_group-a.cluster.local_num_group
+                        }else{
+                            return a.cluster.gIndex-b.cluster.gIndex;
+                        }
+                    });
+                    // 对子群中的tIndex个gIndex重新编号
+                    var new_gIndex = 1,
+                        preGIndex = sub_nodes[0].cluster.gIndex;
+                    for(let [i,n] of sub_nodes.entries()){
+                        var gIndex = n.cluster.gIndex;
+                        if(gIndex != preGIndex){
+                            preGIndex = gIndex;
+                            new_gIndex++;
+                        }
+                        n.cluster.gIndex = new_gIndex
+                        n.cluster.tIndex = i+1;
+                    }
+                    // 对子群内部进行排序
+                    if(count==0){
+                        //将首个时刻的节点都赋给 preNodes
+                        preNodes = sub_nodes;
+                        count++;
+                    }else{
+
+                        sub_nodes.sort((a,b)=>{
+                            if(a.cluster.gIndex!=b.cluster.gIndex){
+                                return a.cluster.gIndex-b.cluster.gIndex
+                            }else{
+                                return a.isPreExist - b.isPreExist;
+                            }
+                        })
+                        var indexStart = 1,
+                            preGIndex = sub_nodes[0].cluster.gIndex;
+                        for(let [i,n] of sub_nodes.entries()){
+                            var gIndex = n.cluster.gIndex;
+                            if(gIndex!=preGIndex){
+                                preGIndex = gIndex;
+                                indexStart = 1;
+                            }
+                            n.cluster.index = indexStart++;
+                            n.cluster.tIndex = i+1;
+                        }
+                        
+                    }
+
+                }
             }
         },
+        switchIndex(node1,node2){
+            [node1.cluster.index,node2.cluster.index] = [node2.cluster.index,node1.cluster.index]
+            [node1.cluster.tIndex,node2.cluster.tIndex] = [node2.cluster.tIndex,node1.cluster.tIndex]
+        },
+        node_classified(orderAttr="t_pub"){
+            if(orderAttr == "cluster"){
+                this.sortByCluster();
+            }else{
+                this.sortByAttr(orderAttr);
+            }
+
+        },
+        // cal_y(node){
+        //     var orderAttr =this.orderAttr;
+        //     var y,
+        //         item_padding = 2,   // 节点之间间距
+        //         group_padding = 8,  // 子群之间间距
+        //         r = 3,          // 圆半径或者rect高度的一半
+        //         height = 308;   // 绘制空间
+        //
+        //     if(orderAttr != "cluster"){
+        //         var scale = d3.scalePoint()
+        //                      .padding(0.7)
+        //                      .domain([1,2,3])
+        //                      .range([height,0])
+        //
+        //         var groupIndex = node.data.group.gIndex,
+        //             len = node.data.group.len,
+        //             index = node.data.group.index;
+        //         y = scale(groupIndex)-((len-1)/2*(item_padding+r))+(index-1)*(item_padding+2*r);
+        //     }else{
+        //         var
+        //             drawHeight = height-padding*2,
+        //             numOfG = node.data.cluster.numOfG,
+        //             tIndex = node.data.cluster.tIndex,
+        //             len = node.data.cluster.len,
+        //             gIndex = node.data.cluster.gIndex;
+        //
+        //         var padding_top = height-len*(2*r+item_padding)+item_padding-(numOfG-1)*group_padding;
+        //         y = padding_top + r+(tIndex-1)*(item_padding+2*r)+(gIndex-1)*group_padding;
+        //     }
+        //
+        //     return y;
+        // },
         drawAxis() {
             var _this = this;
             var width = _this.svgWidth - _this.margin.left - _this.margin.right,
@@ -365,19 +585,12 @@ export default {
                     }
                 })
             }
-        },
-
-        updateDate() {
-
-
-        },
-        draw() {
-
-
         }
+
     },
     components: {
-        Node
+        Node,
+        Edge
     }
 };
 </script>

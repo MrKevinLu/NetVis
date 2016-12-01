@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "d3": "^4.3.0",
+    "dat.gui": "^0.6.1",
     "element-ui": "^1.0.1",
     "highcharts": "^v5.0.4"
   }

@@ -33,8 +33,8 @@ export default {
             var mapAttr = this.mapAttr,
                 node = this.node;
             if(mapAttr == "isNew"){
-                var isPreExsit = node.isPreExsit;
-                return isPreExsit==1?"green":(isPreExsit==2?"lightgrey":"purple");
+                var isPreExsit = node.data.isPreExsit;
+                return isPreExsit==1?"lightgrey":(isPreExsit==2?"green":"purple");
             }
         },
         tooltip(){

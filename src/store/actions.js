@@ -14,6 +14,13 @@ export const changeLocalTArray = ({commit},data)=>{
     commit(types.CHANGE_LOCAL_T_ARRAY, data)
 }
 
+export const addIndividual = ({commit},author)=>{
+    console.log(author);
+    commit(types.ADD_INDIVIDUAL, author)
+}
+export const deleteIndividual = ({commit},author)=>{
+    commit(types.DELETE_INDIVIDUAL,author)
+}
 const changeTime = ({commit},time)=>{
     commit(types.CHANGE_TIME, time)
 }

@@ -1,9 +1,11 @@
 <template lang="html">
-    <div class="individual">
+    <div class="individual" :class="{[classed]:true}">
+        <div class="foldPanel"></div>
         <div id="individual_1" class="i_container">
             <svg :width="svgWidth" :height="svgHeight">
+                    <rect :width="svgWidth" :height="svgHeight" class="overlay_background"></rect>
                     <g class="wrap-g">
-                        <g id="axis-container">
+                        <g class="axis-container">
 
                         </g>
                         <g class="path-group">
@@ -14,11 +16,8 @@
                         </g>
                     </g>
             </svg>
-            <button class="changeOrder" @click="changeOrder">{{orderAttr}}</button>
         </div>
-        <div id="individual_2" class="i_container">
 
-        </div>
     </div>
 </template>
 
@@ -42,18 +41,19 @@ const index_prop = {
     7:"t_cc",         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
     8:"t_venue"       // 文章发表在1.期刊 2.会议 3.both
 };
-
+const test = ["Huamin Qu","Hans-Peter Seidel","Kwan-Liu Ma"]
 export default {
+    props:["selected","index","classed"],
     data() {
         return {
             time_range: ["1990", "2016"],  // 总的时间范围
             orderAttr: "cluster",
-            selected: "Kwan-Liu Ma",
+            // selected: "Huamin Qu", // Thomas Ertl  Hans-Peter Seidel David S. Ebert
             mapAttr: "isNew",
             local_y_scale:"",
             is_axis_drawed:false,
             svgWidth: 650,
-            svgHeight: 378,
+            svgHeight: 358,
             axisHeight: 50,
             margin: {
                 top: 10,
@@ -77,7 +77,9 @@ export default {
             })
             return timeArray;
         },
-
+        hasInitial(){
+            return this.$store.state.hasInitial;
+        },
         // 全局横坐标比例尺
         timeScale() {
             var timeArray = this.timeArray;
@@ -90,7 +92,8 @@ export default {
             return t_scale;
         },
         local_t_array(){
-            return this.$store.state.local_t_array;
+            var tmp = this.$store.state.local_t_array;
+            return tmp[this.selected];
         },
 
         // 局部横坐标比例尺
@@ -120,7 +123,6 @@ export default {
                 for (let l of links) {
                     var source = typeof l.source == "object" ? l.source.name : l.source,
                         target = typeof l.target == "object" ? l.target.name : l.target;
-                    // console.log(source,target);
                     if (source == selected) coNodes.push({
                         time: t,
                         data: nodeByName.get(target)
@@ -131,8 +133,6 @@ export default {
                     })
                 }
             }
-
-            // console.log(coNodes);
             return coNodes;
         },
         links(){
@@ -141,9 +141,8 @@ export default {
                 coNames,
                 coNames_seq = {},
                 links = [];
-            // console.log(nodes);
+            if(!nodes) return links;
             for(let n of nodes){
-                // coNames.add(n.data.name)
                 coNames_seq[n.data.name] = []
             }
             coNames = Object.keys(coNames_seq);
@@ -158,18 +157,17 @@ export default {
             // 对每个合作者的合作时间序列进行排序
             for(let author of coNames){
                 coNames_seq[author].sort((a,b)=>a.time-b.time)
-                // console.log(coNames_seq[author]);
             }
             //标记是否首次出现、连续出现、曾经出现
             for(let author of coNames){
                 var seq = coNames_seq[author],
                     len = seq.length;
                 for(let [i,n] of seq.entries()){
-                    if(i==0) n.isPreExsit = 2;      // 第一次出现
+                    if(i==0) n.data.isPreExsit = 2;      // 第一次出现
                     else if(n.time-seq[i-1].time==1){
-                        n.isPreExsit = 1;   // 连续出现
+                        n.data.isPreExsit = 1;   // 连续出现
                     }else{
-                        n.isPreExsit = 3;   // 曾经出现
+                        n.data.isPreExsit = 3;   // 曾经出现
                     }
                 }
             }
@@ -178,7 +176,6 @@ export default {
             for(let author of coNames){
                 var tmp_arr = [],
                     last_time;
-                // console.log(coNames_seq[author]);
                 if((coNames_seq[author]).length<=1) continue;
                 var seq = coNames_seq[author],
                     len = seq.length;
@@ -217,30 +214,43 @@ export default {
             return this.$store.state.attr_data;
         }
     },
+    beforeMount(){
+        if(this.hasInitial){
+            this.node_classified(this.orderAttr);
+        }
+    },
     mounted() {
-        d3.select(".wrap-g").attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
-        d3.select(".wrap-g .node-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
-        d3.select(".wrap-g .path-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
+        var c = this.classed;
+        d3.select("."+c).select(".wrap-g").attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
+        d3.select("."+c).select(".wrap-g .node-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
+        d3.select("."+c).select(".wrap-g .path-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
+        if(this.hasInitial){
+            this.is_axis_drawed = true;
+            this.drawAxis();
+        }
     },
     watch: {
         orderAttr:function(n,o){
-            console.log(n);
             this.node_classified(n);   // 节点按属性值归类排号
         },
         nodes: function(n, o) {
-            // this.sortByCluster();
-            this.node_classified(this.orderAttr);
-            // console.log(this.links);
+            console.log("drawAxis+++++++");
             if(!this.is_axis_drawed){
                 this.is_axis_drawed = true;
                 this.drawAxis();
             }
+        },
+        links:function(){
+            console.log("links+++++++");
+            this.node_classified(this.orderAttr);
         }
 
     },
     methods: {
         ...mapActions([
-            "changeLocalTArray"
+            "changeLocalTArray",
+            "addIndividual",
+            "deleteIndividual"
         ]),
         changeOrder(){
             var index = Math.floor(Math.random()*8);
@@ -263,9 +273,7 @@ export default {
                     temp_i_name[i] = n;
                     authors[n.name] = i;
                 })
-                // console.log(authors);
                 for(let l of global_links){
-                    // console.log(l.source, l.target);
                     var source = typeof l == 'obejct'?l.source.name:l.source,
                         target = typeof l == 'obejct'?l.target.name:l.target,
                         weight = l.weight;
@@ -277,9 +285,6 @@ export default {
                         })
                     }
                 }
-                // if(t=="2005") console.log(sub_nodes);
-                // console.log(sub_nodes);
-                // console.log(sub_links);
                 var community = jLouvain().nodes(sub_nodes.map((d,i)=>{
                         return i;
                     })).edges(sub_links);
@@ -328,17 +333,20 @@ export default {
         sortByAttr(orderAttr){
             var nodes = this.nodes,
                 attr_data = this.attr_data,
-                local_t_array = this.local_t_array,
+                times = Array.from(new Set(nodes.map(d=>d.time))).sort((a,b)=>a-b),
+                // local_t_array = this.local_t_array,
                 attr_quantile = this.attr_quantile,
                 prop_index = {},    // 属性名-序号的映射
                 t_g_num = {},   // 存储每年不同组的节点个数
                 t_nodes = {};   // 按年存节点
+            // for(let t of times) t_nodes[t] = [];
+            // for(let n of nodes) t_nodes[n.time].push(n.data);
             for(let i in index_prop){
                 prop_index[index_prop[i]] = i
             }
             var q_1 = attr_quantile[orderAttr][0],
                 q_3 = attr_quantile[orderAttr][1];
-            for(let t of local_t_array) {
+            for(let t of times) {
                 t_nodes[t] = [];
                 t_g_num[t] = {};
                 t_g_num[t][1]=0;
@@ -348,7 +356,7 @@ export default {
             for(let n of nodes){
                 t_nodes[n.time].push(n.data);
             }
-            // 存储group 包含gIndex,index,len
+            // 存储group 包含gIndex,index,len,numOfG
             for(let t in t_nodes){
                 var temp_nodes = t_nodes[t];
                 var group_index={
@@ -367,12 +375,15 @@ export default {
                     group_index[gIndex]++
                     n.group.gIndex = gIndex;
                     n.group.index = group_index[gIndex];
+                    n.group.numOfG = Object.keys(group_index).length;
                     t_g_num[t][gIndex]++;
                 })
                 temp_nodes.forEach(n=>{
                     n.group.len = t_g_num[t][n.group.gIndex];
                 })
             }
+
+            this.sortInGroup(t_nodes);
         },
 
         // 为了减少边交叉，对group内的节点进行排序，排序规则：1. 同一个group内，连续出现的节点在其他节点之前 2.连续出现的节点顺序保持与前一时刻一致 3.非连续节点出现位置随意
@@ -380,9 +391,11 @@ export default {
             var orderAttr = this.orderAttr;
             if(orderAttr == 'cluster'){
                 var count = 0,
-                    preNodes;
+                    preNodes,
+                    preTime;
                 for(let t in t_nodes){
                     var sub_nodes = t_nodes[t];
+                    /***********  先对子群大小排序 ***********/
                     sub_nodes.sort((a,b)=>{
                         // 先按子群中孩子节点个数排序，再根据子群编号排序
                         if(a.cluster.local_num_group != b.cluster.local_num_group){
@@ -403,22 +416,36 @@ export default {
                         n.cluster.gIndex = new_gIndex
                         n.cluster.tIndex = i+1;
                     }
-                    // 对子群内部进行排序
+                    /*******************************************/
+
+                    /***********  对子群内部进行排序 ***********/
                     if(count==0){
                         //将首个时刻的节点都赋给 preNodes
                         preNodes = sub_nodes;
+                        preTime = t;
                         count++;
-                    }else{
-
+                        continue;
+                    }
+                    else if(t-preTime!=1){
+                        preNodes = sub_nodes;
+                        preTime = t;
+                        count++
+                        continue;
+                    }
+                    else{
+                        /***********  首先对是否连续出现排序，连续出现的排在前面 ***********/
                         sub_nodes.sort((a,b)=>{
                             if(a.cluster.gIndex!=b.cluster.gIndex){
                                 return a.cluster.gIndex-b.cluster.gIndex
                             }else{
-                                return a.isPreExist - b.isPreExist;
+                                return a.isPreExsit - b.isPreExsit;
                             }
                         })
+
                         var indexStart = 1,
-                            preGIndex = sub_nodes[0].cluster.gIndex;
+                            preGIndex = sub_nodes[0].cluster.gIndex,
+                            numOfG = sub_nodes[0].cluster.numOfG;
+
                         for(let [i,n] of sub_nodes.entries()){
                             var gIndex = n.cluster.gIndex;
                             if(gIndex!=preGIndex){
@@ -428,9 +455,133 @@ export default {
                             n.cluster.index = indexStart++;
                             n.cluster.tIndex = i+1;
                         }
-                        
-                    }
+                        /*******************************************/
 
+                        /***********  对连续出现的进行排序 ***********/
+                        for(let i of d3.range(numOfG)){
+                            var c_gIndex = i+1,
+                                real_seq = [];
+                            // nodes: 子群中连续出现的节点集合
+                            var nodes = sub_nodes.filter(n=>{
+                                return n.cluster.gIndex==c_gIndex && n.isPreExsit==1
+                            });
+
+                            var mapByName = d3.map(nodes,d=>d.name);
+
+                            if(nodes.length==0) continue;
+                            var tempDataArr = nodes.map(d=>{
+                                return [d.cluster.index, d.cluster.tIndex];
+                            })
+                            for(let n of preNodes){
+                                if(mapByName.has(n.name)){
+                                    real_seq.push(mapByName.get(n.name))
+                                }
+
+                            }
+
+                            for(let [i,n] of real_seq.entries()){
+                                n.cluster.index = tempDataArr[i][0];
+                                n.cluster.tIndex = tempDataArr[i][1];
+                            }
+                        }
+                        /*  注意重新排序，否则影响preNodes的顺序  */
+                        sub_nodes.sort((a,b)=>{
+                            if(a.cluster.gIndex!=b.cluster.gIndex){
+                                return a.cluster.gIndex-b.cluster.gIndex
+                            }else if(a.isPreExsit!=b.isPreExsit){
+                                return a.isPreExsit-b.isPreExsit
+                            }else{
+                                return a.cluster.index-b.cluster.index;
+                            }
+                        })
+                        /*******************************************/
+                        /************** 重新初始化 ***************/
+                        preNodes = sub_nodes;
+                        preTime = t;
+                    }
+                }
+            }
+            else{
+                var count = 0,
+                    preNodes,
+                    preTime;
+                for(let t in t_nodes){
+                    var sub_nodes = t_nodes[t];
+                    if(count==0){
+                        preNodes = sub_nodes;
+                        preTime = t;
+                        count++;
+                        continue
+                    }else if(t-preTime!=1){
+                        preNodes = sub_nodes;
+                        preTime = t;
+                        count++;
+                        continue;
+                    }else{
+                        /***********  首先对是否连续出现排序，连续出现的排在前面 ***********/
+
+                        sub_nodes.sort((a,b)=>{
+                            if(a.group.gIndex!=b.group.gIndex){
+                                return a.group.gIndex-b.group.gIndex
+                            }else{
+                                return a.isPreExsit - b.isPreExsit;
+                            }
+                        })
+
+                        var indexStart = 1,
+                            preGIndex = sub_nodes[0].group.gIndex,
+                            numOfG = sub_nodes[0].group.numOfG;
+
+                        for(let [i,n] of sub_nodes.entries()){
+                            var gIndex = n.group.gIndex;
+                            if(gIndex!=preGIndex){
+                                preGIndex = gIndex;
+                                indexStart = 1;
+                            }
+                            n.group.index = indexStart++;
+                        }
+                        /*******************************************/
+
+                        /***********  对连续出现的进行排序 ***********/
+                        for(let i of d3.range(numOfG)){
+                            var c_gIndex = i+1,
+                                real_seq = [];
+                            // nodes: 子群中连续出现的节点集合
+                            var nodes = sub_nodes.filter(n=>{
+                                return n.group.gIndex==c_gIndex && n.isPreExsit==1
+                            });
+
+                            var mapByName = d3.map(nodes,d=>d.name);
+
+                            if(nodes.length==0) continue;
+                            var tempDataArr = nodes.map(d=>{
+                                return d.group.index;
+                            })
+                            for(let n of preNodes){
+                                if(mapByName.has(n.name)){
+                                    real_seq.push(mapByName.get(n.name))
+                                }
+                            }
+                            for(let [i,n] of real_seq.entries()){
+                                n.group.index = tempDataArr[i];
+                            }
+                        }
+
+                        sub_nodes.sort((a,b)=>{
+                            if(a.group.gIndex!=b.group.gIndex){
+                                return a.group.gIndex-b.group.gIndex
+                            }else if(a.isPreExsit!=b.isPreExsit){
+                                return a.isPreExsit-b.isPreExsit
+                            }else{
+                                return a.group.index-b.group.index;
+                            }
+                        })
+
+                        /*******************************************/
+                        /************** 重新初始化 ***************/
+                        preNodes = sub_nodes;
+                        preTime = t;
+                    }
                 }
             }
         },
@@ -487,7 +638,8 @@ export default {
                 time_obj = {},
                 timeArray = _this.timeArray,
                 nodeColor = d3.color("#f9be86"),
-                changeLocalTArray = _this.changeLocalTArray;
+                changeLocalTArray = _this.changeLocalTArray,
+                c = this.classed;
                 // local_t_array = _this.local_t_array;
 
             _this.nodes.forEach((d, i) => {
@@ -501,11 +653,10 @@ export default {
             var min_max = d3.extent(domains.map(d => {
                 return d[1]
             }));
-            // console.log(min_max);
             var y_axis_scale = d3.scaleLinear()
                 .domain(min_max)
                 .range([height - padding, padding]);
-            var svg = d3.select("#axis-container");
+            var svg = d3.select("."+c).select(".axis-container");
             var line = d3.line()
                 .x(d => timeScale(d[0]))
                 .y(d => y_axis_scale(d[1]));
@@ -564,12 +715,11 @@ export default {
                     llen = _this.local_t_array.length;
 
                 if(_this.local_t_array[0]!=current_t_range[0] || _this.local_t_array[llen-1]!=current_t_range[clen-1]){
-                    changeLocalTArray(current_t_range)
+                    changeLocalTArray({
+                        name:_this.selected,
+                        range:current_t_range
+                    });
                 }
-
-                // console.log(local_t_array);
-                // this.local_t_array = local_t_array;
-                // console.log(local_t_range);
 
             }
 
@@ -577,7 +727,7 @@ export default {
                 if (!d3.event.sourceEvent) return; // Only transition after input.
                 if (!d3.event.selection) return; // Ignore empty selections.
                 var [x1, x2] = d3.event.selection
-                d3.selectAll("#axis-container .node").each((d, i, eles) => {
+                d3.select("."+c).selectAll(".axis-container .node").each((d, i, eles) => {
                     if (timeScale(d[0]) >= x1 && timeScale(d[0]) <= x2) {
                         d3.select(eles[i]).attr("fill", nodeColor.brighter(1.5))
                     } else {
@@ -596,7 +746,6 @@ export default {
 </script>
 
 <style lang="css">
-
     .axis--grid .domain {
         fill: #ddd;
         stroke: none;
@@ -604,28 +753,43 @@ export default {
     .axis--grid .tick line {
         stroke: #fff;
     }
-    #axis-container .node{
+    .axis-container .node{
         /*fill:#f9be86*/
     }
 
-    #axis-container .linepath{
+    .axis-container .linepath{
         fill:none;
         stroke:lightgrey;
         stroke-width:2px;
     }
 
     .individual{
-        display:flex;
-        flex-direction:column;
+        /*display:flex;*/
+        /*flex-direction:column;*/
         width:100%;
-        flex:1
+        height:378px;
+        /*flex:1;*/
         /*height:670px;*/
     }
+    .foldPanel{
+        widht:100%;
+        height:20px;
+    }
+    .foldPanel::after{
+        float:right;
+        margin-right: 20px;
+        content: '\e65f';
+
+    }
     #individual_1{
-        flex:1;
-        border: 1px grey solid
+        width:100%;
+        height:358px;
+        /*flex:1;*/
+        /*border: 1px grey solid*/
     }
-    #individual_2{
-        flex:1;
+    .overlay_background{
+        /*opacity:0;*/
+        /*fill:black;*/
     }
+
 </style>

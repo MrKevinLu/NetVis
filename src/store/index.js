@@ -6,15 +6,20 @@ import mutations from './mutations'
 import d3 from '../lib/d3-extend'
 // const Times =
 // var data = fs.readFileSync('../../data/graph.json');
-
+export const initTimes = d3.range(27).map((d, i) => {
+    return 1990 + i + "";
+})
 const state = {
     graph:"",
     attr_data:"",
     currentTime:"2010",
+    hasInitial:false,
     clickNode:"",
-    local_t_array: d3.range(27).map((d, i) => {
-        return 1990 + i + "";
-    }),
+    selected:["Huamin Qu","Kwan-Liu Ma"],
+    local_t_array: {
+        "Huamin Qu":initTimes,
+        "Kwan-Liu Ma":initTimes
+    },
     index_prop:{
         0:"a_deg",      // 总的节点度，非时变
         1:"a_pub",        // 总的发表量，非时变

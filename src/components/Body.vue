@@ -11,7 +11,8 @@
         </div>
 
         <div class="colum main-right">
-            <net-individual></net-individual>
+            <!-- <Demo v-for="(author,index) in selected" :key="index" :selected="author"></Demo> -->
+            <net-individual v-for="(author,index) in selected" :key="index" :selected="author" :classed="author.split(' ').join('')+'_individual'"></net-individual>
         </div>
     </div>
 </template>
@@ -21,14 +22,21 @@ import NetGraph from './middle/Graph.vue'
 import NetStat from './middle/Statistic.vue'
 import NetIndividual from './right/Individual.vue'
 import SortView from './left/SortView.vue'
+// import Demo from './right/demo.vue'
 export default {
     data() {
         return {};
     },
-    computed: {},
-    ready() {},
-    attached() {},
+    computed: {
+        selected(){
+            return this.$store.state.selected;
+        }
+    },
+
     methods: {},
+    mounted(){
+        console.log(this.selected);
+    },
     components: {
         NetGraph,
         NetStat,
@@ -70,6 +78,7 @@ export default {
     width:650px;
     display:flex;
     flex-direction:column;
+    overflow: scroll;
 }
 .clearfx::after{
     content:"";

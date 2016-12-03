@@ -1,6 +1,6 @@
 <template lang="html">
     <transition name="fade">
-        <circle class="i_item" :cx="local_timeScale(node.time)" :cy="cal_y(node)" r="3" :fill="color()"></circle>
+        <circle class="i_item" :cx="local_timeScale(node.time)" :data-item="JSON.stringify(node)" :cy="cal_y(node)" r="3" :fill="color(mapAttr,node)" @mouseover="mouseOverHandler" @mouseout="mouseoutHandle"></circle>
         <!-- <rect :x= "local_timeScale(node.time)-10/2" :y="gen_y()-6/2" fill="green" width=10 height=6></rect> -->
     </transition>
 </template>
@@ -8,10 +8,10 @@
 <script>
 import d3 from '../../lib/d3-extend'
 export default {
-    props:['node',"index","len","mapAttr","orderAttr","local_timeScale"],
+    props:['node',"index","len","mapAttr","orderAttr","local_timeScale","classed"],
     data() {
         return {
-
+            a:1
         };
     },
     computed: {
@@ -29,9 +29,7 @@ export default {
         }
     },
     methods: {
-        color(){
-            var mapAttr = this.mapAttr,
-                node = this.node;
+        color(mapAttr,node){
             if(mapAttr == "isNew"){
                 var isPreExsit = node.data.isPreExsit;
                 return isPreExsit==1?"lightgrey":(isPreExsit==2?"green":"purple");
@@ -78,6 +76,56 @@ export default {
             }
 
             return y;
+        },
+        mouseOverHandler(event){
+            var _this = this;
+            var {target,offsetX,offsetY} = event,
+                node = _this.node;
+            d3.select("."+_this.classed)
+                .select(".tooltip")
+                .style("left",offsetX+10+"px")
+                .style("top",offsetY-10+"px")
+                .text(node.data.name)
+                .style("display","block");
+
+            d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                if(d.data.name == node.data.name){
+                    return "gold"
+                }else{
+                    return 'lightgrey';
+                }
+            })
+            d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                if(d[0].data.name == node.data.name){
+                    return "gold"
+                }else{
+                    return 'lightgrey';
+                }
+            })
+
+        },
+        mouseoutHandle(event){
+            var _this = this,
+                color = _this.color,
+                mapAttr = _this.mapAttr;
+            var {target,offsetX,offsetY} = event;
+            d3.select("."+_this.classed)
+                .select(".tooltip")
+                .style("display","none");
+
+            d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(d){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                return color(mapAttr,d);
+            })
+            d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
+                return 'lightgrey';
+            })
+        },
+
+        getDataByAttr(selection, attrName){
+            return JSON.parse(selection.attr(attrName))
         }
     },
     components: {}

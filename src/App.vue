@@ -9,11 +9,15 @@
 import NetHead from './components/Head.vue'
 import NetBody from './components/Body.vue'
 
+
 export default {
     data: function() {
         return {
 
         }
+    },
+    methods:{
+
     },
     components: {
         NetHead,

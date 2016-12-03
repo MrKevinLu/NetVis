@@ -1,5 +1,6 @@
 import * as types from './mutation-types'
 import {initTimes} from './index'
+import Vue from 'vue'
 // const initTimes = d3.range(27).map((d, i) => {
 //     return 1990 + i + "";
 // })
@@ -36,7 +37,8 @@ export default {
         // console.log(state.selected);
         if(!(author in state.local_t_array)){
             state.selected.push(author);
-            state.local_t_array[author] = initTimes;
+            // state.local_t_array[author] = initTimes;
+            Vue.set(state.local_t_array,author,initTimes);
             state.hasInitial = true;
             console.log(state.selected);
         }

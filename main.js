@@ -6,7 +6,7 @@ import 'element-ui/lib/theme-default/index.css'
 // import './src/css/global.less'
 import { getAllData } from './src/store/actions'
 import * as types from './src/store/mutation-types'
-
+// var startTime = new Date();
 Vue.use(ElementUI)
 
 new Vue({

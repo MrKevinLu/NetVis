@@ -1,6 +1,6 @@
 <template lang="html">
     <transition name="fade">
-        <path :d="generate_d(path_group)" class="i_path"></path>
+        <path :d="generate_d(path_group)" class="i_path" :data-item="JSON.stringify(path_group)" @mouseover="mouseOverHandler" @mouseout="mouseoutHandle"></path>
     </transition>
 </template>
 
@@ -8,7 +8,7 @@
 import d3 from '../../lib/d3-extend'
 
 export default {
-    props:['path_group',"index","orderAttr","local_timeScale"],
+    props:['path_group',"index","orderAttr","mapAttr","local_timeScale","classed"],
     data() {
         return {};
     },
@@ -19,7 +19,12 @@ export default {
             this.drawPath(context,group);
             return context.toString();
         },
-
+        color(mapAttr,node){
+            if(mapAttr == "isNew"){
+                var isPreExsit = node.data.isPreExsit;
+                return isPreExsit==1?"lightgrey":(isPreExsit==2?"green":"purple");
+            }
+        },
         drawPath(context,group){
             var start = group[0],
                 len = group.length,
@@ -71,6 +76,59 @@ export default {
             }
 
             return y;
+        },
+
+        mouseOverHandler(event){
+            var _this = this;
+            var {target,offsetX,offsetY} = event,
+                nodes = _this.path_group;
+
+            d3.select("."+_this.classed)
+                .select(".tooltip")
+                .style("left",offsetX+10+"px")
+                .style("top",offsetY-10+"px")
+                .text(nodes[0].data.name)
+                .style("display","block");
+
+            d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                if(d.data.name == nodes[0].data.name){
+                    return "gold"
+                }else{
+                    return 'lightgrey';
+                }
+            })
+            d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                if(d[0].data.name == nodes[0].data.name){
+                    return "gold"
+                }else{
+                    return 'lightgrey';
+                }
+            })
+
+        },
+        mouseoutHandle(event){
+            var _this = this,
+                color = _this.color,
+                mapAttr = _this.mapAttr;
+
+            var {target,offsetX,offsetY} = event;
+            d3.select("."+_this.classed)
+                .select(".tooltip")
+                .style("display","none");
+
+            d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(d){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                return color(mapAttr,d);
+            })
+            d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
+                return 'lightgrey';
+            })
+        },
+
+        getDataByAttr(selection, attrName){
+            return JSON.parse(selection.attr(attrName))
         }
     },
     components: {}

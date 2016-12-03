@@ -1,7 +1,14 @@
 <template lang="html">
     <div class="individual" :class="{[classed]:true}">
-        <div class="foldPanel"></div>
-        <div id="individual_1" class="i_container">
+        <div class="tooltip">
+
+        </div>
+        <div class="foldPanel">
+            <span class="name_span c_span">{{ selected }}</span>
+            <span class="close_span c_span" @click="closePanel"></span>
+            <span class="toggle_span c_span" @click="togglePanel"></span>
+        </div>
+        <div id="individual_1" class="i_container" v-show="isShowed">
             <svg :width="svgWidth" :height="svgHeight">
                     <rect :width="svgWidth" :height="svgHeight" class="overlay_background"></rect>
                     <g class="wrap-g">
@@ -9,10 +16,10 @@
 
                         </g>
                         <g class="path-group">
-                            <edge v-for="(l,index) in links" :key="index" :path_group="l" :local_timeScale="local_timeScale" :orderAttr='orderAttr'></edge>
+                            <edge v-for="(l,index) in links" :key="index" :path_group="l" :local_timeScale="local_timeScale" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover"></edge>
                         </g>
                         <g class="node-group">
-                            <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr'></node>
+                            <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover"></node>
                         </g>
                     </g>
             </svg>
@@ -41,20 +48,19 @@ const index_prop = {
     7:"t_cc",         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
     8:"t_venue"       // 文章发表在1.期刊 2.会议 3.both
 };
-const test = ["Huamin Qu","Hans-Peter Seidel","Kwan-Liu Ma"]
 export default {
     props:["selected","index","classed"],
     data() {
         return {
             time_range: ["1990", "2016"],  // 总的时间范围
             orderAttr: "cluster",
-            // selected: "Huamin Qu", // Thomas Ertl  Hans-Peter Seidel David S. Ebert
             mapAttr: "isNew",
             local_y_scale:"",
             is_axis_drawed:false,
             svgWidth: 650,
             svgHeight: 358,
             axisHeight: 50,
+            isShowed:true,
             margin: {
                 top: 10,
                 left: 10,
@@ -92,8 +98,8 @@ export default {
             return t_scale;
         },
         local_t_array(){
-            var tmp = this.$store.state.local_t_array;
-            return tmp[this.selected];
+            var tmp = this.$store.state.local_t_array[this.selected];
+            return tmp;
         },
 
         // 局部横坐标比例尺
@@ -108,6 +114,7 @@ export default {
         },
         // 合作者数组，{time,data}
         nodes() {
+            var startTime = new Date();
             var graph = this.$store.state.graph;
             if (graph == "") return [];
             var local_t_array = this.local_t_array,
@@ -133,9 +140,12 @@ export default {
                     })
                 }
             }
+            var endTime = new Date();
+            console.log("nodes takes:",(endTime-startTime)/1000);
             return coNodes;
         },
         links(){
+            var startTime = new Date();
             var nodes = this.nodes,
                 local_t_array = this.local_t_array,
                 coNames,
@@ -207,6 +217,8 @@ export default {
                     }
                 }
             }
+            var endTime = new Date();
+            console.log("links takes:",(endTime-startTime)/1000);
             return links;
         },
 
@@ -221,6 +233,7 @@ export default {
     },
     mounted() {
         var c = this.classed;
+
         d3.select("."+c).select(".wrap-g").attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
         d3.select("."+c).select(".wrap-g .node-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
         d3.select("."+c).select(".wrap-g .path-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
@@ -234,14 +247,14 @@ export default {
             this.node_classified(n);   // 节点按属性值归类排号
         },
         nodes: function(n, o) {
-            console.log("drawAxis+++++++");
+            // console.log("drawAxis+++++++");
             if(!this.is_axis_drawed){
                 this.is_axis_drawed = true;
                 this.drawAxis();
             }
         },
         links:function(){
-            console.log("links+++++++");
+            // console.log("links+++++++");
             this.node_classified(this.orderAttr);
         }
 
@@ -252,9 +265,18 @@ export default {
             "addIndividual",
             "deleteIndividual"
         ]),
-        changeOrder(){
-            var index = Math.floor(Math.random()*8);
-            this.orderAttr = index_prop[index]
+        changeHover(){
+
+        },
+        closePanel(){
+            this.deleteIndividual(this.selected);
+        },
+        togglePanel(){
+            this.isShowed = !this.isShowed;
+            d3.select("."+this.classed).select(".toggle_span").classed("toggle_span_up",!this.isShowed);
+        },
+        mouseoverHander(){
+
         },
         sortByCluster(){
             var nodes = this.nodes,
@@ -585,16 +607,16 @@ export default {
                 }
             }
         },
-        switchIndex(node1,node2){
-            [node1.cluster.index,node2.cluster.index] = [node2.cluster.index,node1.cluster.index]
-            [node1.cluster.tIndex,node2.cluster.tIndex] = [node2.cluster.tIndex,node1.cluster.tIndex]
-        },
+
         node_classified(orderAttr="t_pub"){
+            var startTime = new Date();
             if(orderAttr == "cluster"){
                 this.sortByCluster();
             }else{
                 this.sortByAttr(orderAttr);
             }
+            var endTime = new Date();
+            console.log("sort takes:",(endTime-startTime)/1000);
 
         },
         // cal_y(node){
@@ -764,32 +786,80 @@ export default {
     }
 
     .individual{
+        position:relative;
         /*display:flex;*/
         /*flex-direction:column;*/
         width:100%;
-        height:378px;
+        height:auto;
+        /*height:378px;*/
         /*flex:1;*/
         /*height:670px;*/
     }
     .foldPanel{
         widht:100%;
         height:20px;
+        background-color: #686767;
+        /*vertical-align: middle;*/
+        line-height: 20px;
+        font-family: sans-serif;
+        font-size: 12px;
+        font-weight: bold;
+        color:lightgrey;
+        padding-left: 10px;
+        padding-right:10px;
     }
-    .foldPanel::after{
+    .c_span{
+        display: inline-block;
+        text-align: center;
+    }
+    .close_span, .toggle_span{
         float:right;
-        margin-right: 20px;
-        content: '\e65f';
+        width:15px;
+        height:100%;
+    }
+    .close_span::after{
+        content:"x";
+    }
+    .toggle_span::after{
+        content:'';
+        float:right;
+        margin-top:7px;
+        margin-right:3px;
+        /*border-bottom:none;*/
+        border-width:5px 5px 0;
+        border-style:solid;
+        border-color:lightgrey transparent;
+    }
+    .close_span:hover,.toggle_span:hover{
+        background-color: black;
+    }
+    /*.toggle_span:hover:after{
+        border-width:0 5px 5px;
 
+    }*/
+    .toggle_span_up::after{
+        border-width:0 5px 5px;
     }
     #individual_1{
         width:100%;
-        height:358px;
-        /*flex:1;*/
-        /*border: 1px grey solid*/
+        height:auto;
     }
     .overlay_background{
-        /*opacity:0;*/
-        /*fill:black;*/
+        fill:none;
+    }
+    .tooltip{
+        position: absolute;
+        display:none;
+        border-radius:5px;
+        min-width:40px;
+        height:auto;
+        padding:5px 10px;
+        font-size:13px;
+        font-family: sans-serif;
+        font-weight: bold;
+        background-color: rgba(119, 107, 107,0.7);
+        color:white;
+
     }
 
 </style>

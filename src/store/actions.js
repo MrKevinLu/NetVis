@@ -4,9 +4,14 @@ const PROPERTY_PATH = "../../data/node_attrs.json"
 
 
 export const getAllData = ({commit}) => {
+    var startTime = new Date();
+
     Promise.all([getGraphData(), nodeAttrsData()]).then(function(data) {
         // console.log(data);
+        var endTime = new Date();
+        console.log("获取数据花费：",(endTime-startTime)/1000);
         commit(types.GET_ALL_DATA, data)
+
     })
 }
 

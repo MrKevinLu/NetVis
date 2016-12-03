@@ -1,5 +1,5 @@
 <template lang="html">
-    <div class="main clearfx">
+    <div class="bodyContainer main clearfx">
 
         <div class="colum main-left">
             <sort-view></sort-view>
@@ -22,7 +22,8 @@ import NetGraph from './middle/Graph.vue'
 import NetStat from './middle/Statistic.vue'
 import NetIndividual from './right/Individual.vue'
 import SortView from './left/SortView.vue'
-// import Demo from './right/demo.vue'
+
+
 export default {
     data() {
         return {};
@@ -33,9 +34,12 @@ export default {
         }
     },
 
-    methods: {},
+    methods: {
+
+    },
     mounted(){
-        console.log(this.selected);
+
+        console.log(`select: ${this.selected}`);
     },
     components: {
         NetGraph,
@@ -48,20 +52,15 @@ export default {
 
 <style lang="css" scoped>
 
-.main{
+.bodyContainer.main{
     display:flex;
+    position:relative;
     align-items:stretch;
     width:100%;
     flex:1;
     box-sizing: border-box;
     border:2px solid grey;
 }
-
-/*.colum{
-    float:left;
-    box-sizing: border-box;
-
-}*/
 
 .main-left{
     flex:1;
@@ -75,6 +74,7 @@ export default {
     width:550px;
 }
 .main-right{
+    position:relative;
     width:650px;
     display:flex;
     flex-direction:column;
@@ -85,5 +85,8 @@ export default {
     display: block;
     clear:both;
 }
+</style>
+
+<style lang="css">
 
 </style>

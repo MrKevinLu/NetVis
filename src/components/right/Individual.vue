@@ -477,6 +477,7 @@ export default {
                             n.cluster.index = indexStart++;
                             n.cluster.tIndex = i+1;
                         }
+                        
                         /*******************************************/
 
                         /***********  对连续出现的进行排序 ***********/

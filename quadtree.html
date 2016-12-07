@@ -34,18 +34,31 @@
         stroke-width: 2;
         stroke-linecap: round;
     }
+    #test{
+        background-color: red;
+    }
+
 </style>
 
 <body>
-
+<button id="change">Recover</button>
 </body>
+<div id="test"></div>
 <!-- <svg width="960" height="500"></svg> -->
 
 <!-- <div id="container"></div> -->
 <!-- <button id="change">change</button> -->
 <!-- <svg width="960" height="500"></svg> -->
 <script src="http://d3js.org/d3.v4.min.js"></script>
+<script src="./node_modules/jquery/dist/jquery.min.js"></script>
+<script src="./node_modules/velocity-animate/velocity.min.js"></script>
+<script src="./node_modules/velocity-animate/velocity.ui.min.js"></script>
+
 <script>
+    $("#test").velocity({width:"200px",height:"400px"},1500);
+    $("#change").on("click",function(){
+        $("#test").velocity("reverse");
+    })
     var margin = {
             top: 200,
             right: 40,

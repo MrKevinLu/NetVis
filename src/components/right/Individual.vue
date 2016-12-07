@@ -16,10 +16,10 @@
 
                         </g>
                         <g class="path-group">
-                            <edge v-for="(l,index) in links" :key="index" :path_group="l" :local_timeScale="local_timeScale" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover"></edge>
+                            <edge v-for="(l,index) in links" :key="index" :path_group="l" :local_timeScale="local_timeScale" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover" :scales="quantile_scales.scales"></edge>
                         </g>
                         <g class="node-group">
-                            <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover"></node>
+                            <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover" :scales="quantile_scales.scales"></node>
                         </g>
                     </g>
             </svg>
@@ -33,8 +33,9 @@ import d3 from '../../lib/d3-extend'
 import Highcharts from 'highcharts'
 import Node from './Node.vue'
 import Edge from './Link.vue'
+import chroma from 'chroma-js'
 import jLouvain from '../../lib/jLouvain'
-// import dat from 'dat.gui'
+import dat from '../../lib/dat.gui.min'
 import {mapActions,mapGetters} from "vuex"
 
 const index_prop = {
@@ -48,13 +49,26 @@ const index_prop = {
     7:"t_cc",         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
     8:"t_venue"       // 文章发表在1.期刊 2.会议 3.both
 };
+
+const prop_index = {
+    "a_deg":0,      // 总的节点度，非时变
+    "a_pub":1,        // 总的发表量，非时变
+    "t_avgW":2,       // 平均边权重，时变
+    "t_pub":3,        // 当年发表量，时变
+    "t_deg":4,     // 当年的节点度，时变
+    "t_dCent":5,   // 度中心性 节点的度/N-1  N为所有节点，时变
+    "t_avgC":6,       // 邻居节点的平均度中心性，时变
+    "t_cc":7,         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
+    "t_venue":8       // 文章发表在1.期刊 2.会议 3.both
+};
+
 export default {
     props:["selected","index","classed"],
     data() {
         return {
             time_range: ["1990", "2016"],  // 总的时间范围
             orderAttr: "cluster",
-            mapAttr: "isNew",
+            mapAttr: "default",
             local_y_scale:"",
             is_axis_drawed:false,
             svgWidth: 650,
@@ -73,7 +87,7 @@ export default {
     },
     computed: {
         ...mapGetters([
-            "attr_quantile"
+            "quantile_scales"
         ]),
         // 总时间范围，时间序列
         timeArray() {
@@ -115,7 +129,8 @@ export default {
         // 合作者数组，{time,data}
         nodes() {
             var startTime = new Date();
-            var graph = this.$store.state.graph;
+            var graph = this.$store.state.graph,
+                attr_data = this.$store.state.attr_data;
             if (graph == "") return [];
             var local_t_array = this.local_t_array,
                 selected = this.selected,
@@ -132,16 +147,18 @@ export default {
                         target = typeof l.target == "object" ? l.target.name : l.target;
                     if (source == selected) coNodes.push({
                         time: t,
-                        data: nodeByName.get(target)
+                        data: nodeByName.get(target),
+                        values:attr_data[t][target]
                     })
                     if (target == selected) coNodes.push({
                         time: t,
-                        data: nodeByName.get(source)
+                        data: nodeByName.get(source),
+                        values:attr_data[t][source]
                     })
                 }
             }
             var endTime = new Date();
-            console.log("nodes takes:",(endTime-startTime)/1000);
+            // console.log("nodes takes:",(endTime-startTime)/1000);
             return coNodes;
         },
         links(){
@@ -168,6 +185,7 @@ export default {
             for(let author of coNames){
                 coNames_seq[author].sort((a,b)=>a.time-b.time)
             }
+
             //标记是否首次出现、连续出现、曾经出现
             for(let author of coNames){
                 var seq = coNames_seq[author],
@@ -199,16 +217,13 @@ export default {
                             last_time = n.time; // 更换临时数组中最后一个元素的时间
                             tmp_arr.push(n)
                             // continue;
-                        }else{              // 如果不连续，判断临时数组个数是否大于1，若大于1，能够形成路径，添加至links；否则重置临时数组
+                        }else{              // 如果不连续，判断临时数组个数是否大于1，若大于1，能够形成路径，添加至links；初始化临时数组，加入当前节点
                             n.isPreExist = false;
                             if(tmp_arr.length>1){
                                 links.push(tmp_arr);
                             }
-                            else{
-                                tmp_arr = [n];
-                                last_time = n.time;
-                                // continue;
-                            }
+                            tmp_arr = [n];
+                            last_time = n.time;
                         }
                     }
 
@@ -216,14 +231,27 @@ export default {
                         links.push(tmp_arr);
                     }
                 }
+
             }
             var endTime = new Date();
-            console.log("links takes:",(endTime-startTime)/1000);
+            // console.log("links takes:",(endTime-startTime)/1000);
             return links;
         },
 
         attr_data(){
             return this.$store.state.attr_data;
+        },
+        ego_values(){
+            var selected = this.selected,
+                attr_data = this.$store.state.attr_data,
+                t_values = {};
+            if(attr_data == "") return [];
+            for(let t in attr_data){
+                if(selected in attr_data[t]){
+                    t_values[t] = attr_data[t][selected]
+                }
+            }
+            return t_values;
         }
     },
     beforeMount(){
@@ -232,29 +260,29 @@ export default {
         }
     },
     mounted() {
-        var c = this.classed;
+        var _this = this;
+        var c = _this.classed;
 
-        d3.select("."+c).select(".wrap-g").attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
-        d3.select("."+c).select(".wrap-g .node-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
-        d3.select("."+c).select(".wrap-g .path-group").attr("transform", "translate(0," + (this.margin.top + this.axisHeight) + ")");
-        if(this.hasInitial){
-            this.is_axis_drawed = true;
-            this.drawAxis();
+        d3.select("."+c).select(".wrap-g").attr("transform", "translate(" + _this.margin.left + "," + _this.margin.top + ")");
+        d3.select("."+c).select(".wrap-g .node-group").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight) + ")");
+        d3.select("."+c).select(".wrap-g .path-group").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight) + ")");
+        if(_this.hasInitial){
+            _this.is_axis_drawed = true;
+            _this.drawAxis();
         }
+        _this.generateControls();
     },
     watch: {
         orderAttr:function(n,o){
             this.node_classified(n);   // 节点按属性值归类排号
         },
         nodes: function(n, o) {
-            // console.log("drawAxis+++++++");
             if(!this.is_axis_drawed){
                 this.is_axis_drawed = true;
                 this.drawAxis();
             }
         },
         links:function(){
-            // console.log("links+++++++");
             this.node_classified(this.orderAttr);
         }
 
@@ -268,6 +296,7 @@ export default {
         changeHover(){
 
         },
+        /******* 关闭折叠事件 ********/
         closePanel(){
             this.deleteIndividual(this.selected);
         },
@@ -275,9 +304,10 @@ export default {
             this.isShowed = !this.isShowed;
             d3.select("."+this.classed).select(".toggle_span").classed("toggle_span_up",!this.isShowed);
         },
-        mouseoverHander(){
+        /**************************/
 
-        },
+        /******* 为每个节点进行分组编号 ********/
+
         sortByCluster(){
             var nodes = this.nodes,
                 t_nodes = {},
@@ -357,17 +387,19 @@ export default {
                 attr_data = this.attr_data,
                 times = Array.from(new Set(nodes.map(d=>d.time))).sort((a,b)=>a-b),
                 // local_t_array = this.local_t_array,
-                attr_quantile = this.attr_quantile,
+                quantile = this.quantile_scales.prop_quantile,
                 prop_index = {},    // 属性名-序号的映射
                 t_g_num = {},   // 存储每年不同组的节点个数
                 t_nodes = {};   // 按年存节点
+
             // for(let t of times) t_nodes[t] = [];
             // for(let n of nodes) t_nodes[n.time].push(n.data);
             for(let i in index_prop){
                 prop_index[index_prop[i]] = i
             }
-            var q_1 = attr_quantile[orderAttr][0],
-                q_3 = attr_quantile[orderAttr][1];
+            var q_1 = quantile[orderAttr][0],
+                q_3 = quantile[orderAttr][1];
+            console.log(q_1,q_3);
             for(let t of times) {
                 t_nodes[t] = [];
                 t_g_num[t] = {};
@@ -390,7 +422,7 @@ export default {
                     var values = attr_data[t][n.name],
                         c_value = values[prop_index[orderAttr]],
                         gIndex;
-                    if(c_value<q_1) gIndex = 1;
+                    if(c_value<=q_1) gIndex = 1;
                     else if (c_value<=q_3) gIndex = 2;
                     else gIndex = 3;
                     if(!n.group) n.group = {};
@@ -403,11 +435,21 @@ export default {
                 temp_nodes.forEach(n=>{
                     n.group.len = t_g_num[t][n.group.gIndex];
                 })
+                // console.log("************");
+                // temp_nodes.sort((a,b)=>a.group.gIndex-b.group.gIndex);
+                // temp_nodes.forEach(n=>{
+                //     var values = attr_data[t][n.name]
+                //     console.log(n.group.gIndex,values[prop_index[orderAttr]]);
+                // })
+                // console.log("************");
             }
 
             this.sortInGroup(t_nodes);
         },
 
+        /**************************/
+
+        /******* 为每个节点进行组内重新编号 ********/
         // 为了减少边交叉，对group内的节点进行排序，排序规则：1. 同一个group内，连续出现的节点在其他节点之前 2.连续出现的节点顺序保持与前一时刻一致 3.非连续节点出现位置随意
         sortInGroup(t_nodes){
             var orderAttr = this.orderAttr;
@@ -477,7 +519,7 @@ export default {
                             n.cluster.index = indexStart++;
                             n.cluster.tIndex = i+1;
                         }
-                        
+
                         /*******************************************/
 
                         /***********  对连续出现的进行排序 ***********/
@@ -608,6 +650,7 @@ export default {
                 }
             }
         },
+        /**************************/
 
         node_classified(orderAttr="t_pub"){
             var startTime = new Date();
@@ -617,7 +660,7 @@ export default {
                 this.sortByAttr(orderAttr);
             }
             var endTime = new Date();
-            console.log("sort takes:",(endTime-startTime)/1000);
+            // console.log("sort takes:",(endTime-startTime)/1000);
 
         },
         // cal_y(node){
@@ -652,37 +695,50 @@ export default {
         //
         //     return y;
         // },
+
+        /******** 绘制头部坐标轴  **********/
         drawAxis() {
             var _this = this;
             var width = _this.svgWidth - _this.margin.left - _this.margin.right,
+                selected = _this.selected,
+                ego_values = _this.ego_values,
                 height = _this.axisHeight,
                 padding = 5,
                 timeScale = _this.timeScale,
-                time_obj = {},
+                time_deg = {},
                 timeArray = _this.timeArray,
                 nodeColor = d3.color("#f9be86"),
                 changeLocalTArray = _this.changeLocalTArray,
-                c = this.classed;
-                // local_t_array = _this.local_t_array;
+                c = this.classed,
+                scales = _this.quantile_scales.scales,
+                another_attr = "t_cc";
+
 
             _this.nodes.forEach((d, i) => {
-
-                time_obj[d.time] ? (time_obj[d.time]++) : (time_obj[d.time] = 1)
+                time_deg[d.time] ? (time_deg[d.time]++) : (time_deg[d.time] = 1)
             })
 
-            var domains = Object.keys(time_obj).sort().map(k => {
-                return [k, time_obj[k]]
+            var domains_deg = Object.keys(time_deg).sort().map(k => {
+                return [k, time_deg[k]]
             });
-            var min_max = d3.extent(domains.map(d => {
+
+            var domains_another = Object.keys(ego_values).sort((a,b)=>a-b).map(t=>{
+                return [t, ego_values[t][prop_index[another_attr]]]
+            })
+
+            var min_max_deg = d3.extent(domains_deg.map(d => {
                 return d[1]
             }));
-            var y_axis_scale = d3.scaleLinear()
-                .domain(min_max)
+
+            var y_axis_scale_deg = d3.scaleLinear()
+                .domain(min_max_deg)
                 .range([height - padding, padding]);
+            var y_axis_scale_another = scales[another_attr].copy().range([height - padding, padding])
+
             var svg = d3.select("."+c).select(".axis-container");
             var line = d3.line()
                 .x(d => timeScale(d[0]))
-                .y(d => y_axis_scale(d[1]));
+                .y(d => y_axis_scale_deg(d[1]));
             // 坐标轴
             svg.append("g")
                 .attr("class", "axis--grid")
@@ -707,18 +763,38 @@ export default {
                     .on("brush", brushing)
                     .on("end", brushended));
             // 节点和线
-            var line = svg.append("g").datum(domains).append("path")
+            var line = svg.append("g").datum(domains_deg).append("path")
                 .attr("class", "linepath")
                 .attr("d", line);
 
+            var bars = svg.append("g")
+                          .selectAll(".bar")
+                          .data(domains_another)
+                          .enter()
+                          .append("rect")
+                          .attr("class","bar")
+                          .attr("width",10)
+                          .attr("height",function(d){
+                              return height-y_axis_scale_another(d[1]);
+                          })
+                          .attr("x",function(d){
+                              return timeScale(d[0])-5;
+                          })
+                          .attr("y",function(d){
+                              return y_axis_scale_another(d[1])
+                          })
+                          .attr("fill",function(){
+                              return d3.rgb(101, 147, 237,0.5)
+                          });
+
             var nodes = svg.append("g")
                 .selectAll(".node")
-                .data(domains)
+                .data(domains_deg)
                 .enter()
                 .append("circle")
                 .attr("class", "node")
                 .attr("cx", d => timeScale(d[0]))
-                .attr("cy", d => y_axis_scale(d[1]))
+                .attr("cy", d => y_axis_scale_deg(d[1]))
                 .attr("r", 3)
                 .attr("fill", nodeColor);
 
@@ -745,7 +821,6 @@ export default {
                 }
 
             }
-
             function brushing() {
                 if (!d3.event.sourceEvent) return; // Only transition after input.
                 if (!d3.event.selection) return; // Ignore empty selections.
@@ -758,8 +833,35 @@ export default {
                     }
                 })
             }
-        }
+        },
 
+        /*****  为每个个体中心网络生成局部控制面板  ******/
+        generateControls(){
+            var _this = this;
+            var obj = {
+                orderAttr: "cluster",   // 排序选择
+                colorMap: "default",    // 节点颜色映射选择
+                startColor: [128,128,128],
+                endColor: [90,90,90]
+            }
+            var attrList = Object.keys(index_prop).map(d=>{return index_prop[d]});
+            // console.log(attrList);
+            var gui = new dat.GUI({autoPlace: false});
+
+            var customContainer = d3.select("."+_this.classed).node();
+            customContainer.appendChild(gui.domElement);
+            gui.add(obj,"orderAttr",['cluster',...attrList]).onChange(_this.changeOrderAttr);
+            gui.add(obj,"colorMap",["default",...attrList]).onChange(_this.changeMapAttr);
+            gui.addColor(obj,"startColor");
+            gui.addColor(obj,"endColor");
+            gui.close();
+        },
+        changeOrderAttr(attr){
+            this.orderAttr = attr;
+        },
+        changeMapAttr(attr){
+            this.mapAttr = attr
+        }
     },
     components: {
         Node,
@@ -863,4 +965,24 @@ export default {
 
     }
 
+</style>
+
+<style lan="css">
+.individual .dg.main{
+    position:absolute;
+    top:0;
+    right:60px;
+    z-index:999;
+    border-radius: 4px;
+    width:200px !important;
+}
+.individual .dg.main .close-button{
+    box-sizing: border-box;
+    background-color: #686767;
+    height:20px;
+    line-height:20px;
+    width:200px !important;
+    text-align: right;
+    padding-right:10px;
+}
 </style>

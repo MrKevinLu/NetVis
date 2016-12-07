@@ -6,9 +6,26 @@
 
 <script>
 import d3 from '../../lib/d3-extend'
+import chroma from 'chroma-js'
+
+const SVG_WH = {
+    w: 650,
+    h: 358
+}
+const prop_index = {
+    "a_deg":0,      // 总的节点度，非时变
+    "a_pub":1,        // 总的发表量，非时变
+    "t_avgW":2,       // 平均边权重，时变
+    "t_pub":3,        // 当年发表量，时变
+    "t_deg":4,     // 当年的节点度，时变
+    "t_dCent":5,   // 度中心性 节点的度/N-1  N为所有节点，时变
+    "t_avgC":6,       // 邻居节点的平均度中心性，时变
+    "t_cc":7,         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
+    "t_venue":8       // 文章发表在1.期刊 2.会议 3.both
+};
 
 export default {
-    props:['path_group',"index","orderAttr","mapAttr","local_timeScale","classed"],
+    props:['path_group',"index","orderAttr","mapAttr","local_timeScale","classed","scales"],
     data() {
         return {};
     },
@@ -19,10 +36,20 @@ export default {
             this.drawPath(context,group);
             return context.toString();
         },
+        /*****   节点颜色映射方案   ****/
         color(mapAttr,node){
-            if(mapAttr == "isNew"){
+            var scales = this.scales,
+                values = node.values;
+            if(mapAttr == "default"){
                 var isPreExsit = node.data.isPreExsit;
                 return isPreExsit==1?"lightgrey":(isPreExsit==2?"green":"purple");
+            }else if(mapAttr!="t_venue"){
+                var scale = scales[mapAttr],
+                    value = values[prop_index[mapAttr]];
+                return chroma.scale(['yellow', 'red'])(scale(value));
+            }else{
+                var scale = scales["t_venue"].range(["red","blue","orange"]);
+                return scale(values[prop_index[mapAttr]])
             }
         },
         drawPath(context,group){
@@ -85,7 +112,13 @@ export default {
 
             d3.select("."+_this.classed)
                 .select(".tooltip")
-                .style("left",offsetX+10+"px")
+                .style("left",function(d){
+                    if(SVG_WH.w-offsetX>100)
+                        return offsetX+10+"px"
+                    else{
+                        return offsetX-80+"px"
+                    }
+                })
                 .style("top",offsetY-10+"px")
                 .text(nodes[0].data.name)
                 .style("display","block");

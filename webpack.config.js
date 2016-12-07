@@ -17,7 +17,10 @@ module.exports = {
         chunkFilenames: '[id].chunk.js'
     },
     resolve: {
-        extension: ['', '.js', '.vue', '.css']
+        extension: ['', '.js', '.vue', '.css'],
+        alias:{
+            'jquery': 'jquery'
+        }
     },
     module: {
         loaders: [{
@@ -42,7 +45,12 @@ module.exports = {
             query: {
                 name: '[name].[ext]?[hash]'
             }
-        }]
+        }
+        // ,{
+        //     test: require.resolve('jquery'),
+        //     loader: 'expose?jquery!expose?$'
+        // }
+    ]
     },
     vue: {
         loaders: {
@@ -55,12 +63,18 @@ module.exports = {
         new webpack.DefinePlugin({
             'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || "development")
         }),
+        // new webpack.ProvidePlugin({
+        //     $: "jquery",
+        //     jQuery: "jquery",
+        //     "window.jQuery": "jquery"
+        // }),
         new ExtractTextPlugin('css/style.css', {
             allChunks: true
         }),
         new webpack.optimize.OccurrenceOrderPlugin(),
         new webpack.HotModuleReplacementPlugin(),
         new webpack.NoErrorsPlugin()
+
     ]
 }
 

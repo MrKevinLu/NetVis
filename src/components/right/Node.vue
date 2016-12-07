@@ -7,8 +7,29 @@
 
 <script>
 import d3 from '../../lib/d3-extend'
+import chroma from 'chroma-js'
+import $ from 'jquery';
+window.jQuery = window.$ = $;
+require('velocity-animate');
+
+const prop_index = {
+    "a_deg":0,      // 总的节点度，非时变
+    "a_pub":1,        // 总的发表量，非时变
+    "t_avgW":2,       // 平均边权重，时变
+    "t_pub":3,        // 当年发表量，时变
+    "t_deg":4,     // 当年的节点度，时变
+    "t_dCent":5,   // 度中心性 节点的度/N-1  N为所有节点，时变
+    "t_avgC":6,       // 邻居节点的平均度中心性，时变
+    "t_cc":7,         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
+    "t_venue":8       // 文章发表在1.期刊 2.会议 3.both
+};
+const SVG_WH = {
+    w: 650,
+    h: 358
+}
+
 export default {
-    props:['node',"index","len","mapAttr","orderAttr","local_timeScale","classed"],
+    props:['node',"index","len","mapAttr","orderAttr","local_timeScale","classed","scales"],
     data() {
         return {
             a:1
@@ -29,12 +50,23 @@ export default {
         }
     },
     methods: {
+        /*****   节点颜色映射方案   ****/
         color(mapAttr,node){
-            if(mapAttr == "isNew"){
+            var scales = this.scales,
+                values = node.values;
+            if(mapAttr == "default"){
                 var isPreExsit = node.data.isPreExsit;
                 return isPreExsit==1?"lightgrey":(isPreExsit==2?"green":"purple");
+            }else if(mapAttr!="t_venue"){
+                var scale = scales[mapAttr],
+                    value = values[prop_index[mapAttr]];
+                return chroma.scale(['yellow', 'red'])(scale(value));
+            }else{
+                var scale = scales["t_venue"].range(["red","blue","orange"]);
+                return scale(values[prop_index[mapAttr]])
             }
         },
+        /*****  上下文信息   *****/
         tooltip(){
             var _this = this,
                 node = this.node;
@@ -78,14 +110,23 @@ export default {
             return y;
         },
         mouseOverHandler(event){
-            var _this = this;
+            var _this = this,
+                attr = _this.orderAttr;
+            console.log(_this.node);
             var {target,offsetX,offsetY} = event,
                 node = _this.node;
             d3.select("."+_this.classed)
                 .select(".tooltip")
-                .style("left",offsetX+10+"px")
+                .style("left",function(d){
+                    if(SVG_WH.w-offsetX>100)
+                        return offsetX+10+"px"
+                    else{
+                        return offsetX-80+"px"
+                    }
+                })
                 .style("top",offsetY-10+"px")
-                .text(node.data.name)
+                // .text(node.data.name)
+                .html(`${node.data.name} ${node.values.toString()}`)
                 .style("display","block");
 
             d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(){
@@ -109,12 +150,19 @@ export default {
         mouseoutHandle(event){
             var _this = this,
                 color = _this.color,
-                mapAttr = _this.mapAttr;
+                mapAttr = _this.mapAttr,
+                values = _this.values;
             var {target,offsetX,offsetY} = event;
             d3.select("."+_this.classed)
                 .select(".tooltip")
                 .style("display","none");
 
+            // d3.select("."+_this.classed).selectAll(".i_item").each((d,i,elems)=>{
+            //     $(elems[i]).velocity("reverse");
+            // });
+            // d3.select("."+_this.classed).selectAll(".i_path").each((d,i,elems)=>{
+            //     $(elems[i]).velocity("reverse");
+            // });
             d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(d){
                 var d = _this.getDataByAttr(d3.select(this), "data-item");
                 return color(mapAttr,d);

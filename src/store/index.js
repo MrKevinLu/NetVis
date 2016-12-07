@@ -4,6 +4,8 @@ import * as actions from './actions'
 import * as types from './mutation-types'
 import mutations from './mutations'
 import d3 from '../lib/d3-extend'
+// import chroma from 'chroma-js'
+
 // const Times =
 // var data = fs.readFileSync('../../data/graph.json');
 export const initTimes = d3.range(27).map((d, i) => {
@@ -125,17 +127,19 @@ const getters = {
         return g_attr_data;
     },
 
-    // 各个属性的1/4 和 3/4位点
-    attr_quantile(state,getters){
+    // 各个属性的1/4 和 3/4位点以及比例尺
+    quantile_scales(state,getters){
         var attr_data = state.attr_data;
 
         if(attr_data == "") return;
         var prop_domains={},
             prop_quantile = {},
-            index_prop = state.index_prop;
+            scales = {},
+            index_prop = state.index_prop
         Object.keys(index_prop).forEach(i=>{
             prop_domains[index_prop[i]] = [];
             prop_quantile[index_prop[i]] = [];
+            scales[index_prop[i]] = "";
         })
         for(let t in attr_data){
             for(let name in attr_data[t]){
@@ -145,13 +149,36 @@ const getters = {
                 }
             }
         }
+        // 获取每个属性对应的四分之一位点和四分之三位点
         for(let attr in prop_domains){
             var values = prop_domains[attr].sort((a,b)=>a-b);
-            var quantile_1 = d3.quantile(values,0.25),
-                quantile_3 = d3.quantile(values,0.75);
-            prop_quantile[attr].push(quantile_1,quantile_3);
+            if(attr!="t_venue"){
+                var quantile_1 = d3.quantile(values,0.25),
+                    quantile_3 = d3.quantile(values,0.75);
+                var min_max = d3.extent(values),
+                    scale = d3.scaleLinear()
+                                .domain(min_max)
+                                .range([0,1]);
+                prop_quantile[attr].push(quantile_1,quantile_3);
+                scales[attr] = scale;
+
+            }else{
+                var scale = d3.scaleOrdinal()
+                                .domain(Array.from(new Set(values)));
+
+                prop_quantile[attr].push(1.5,2.5); // 类别型数据还需处理下
+                scales[attr] = scale;
+
+            }
         }
-        return prop_quantile;
+
+        // 获取属性颜色映射比例尺
+        for(let attr in prop_domains){
+            if(attr != "t_venue"){
+                var values = prop_domains[attr]
+            }
+        }
+        return {prop_quantile,scales};
     }
 }
 

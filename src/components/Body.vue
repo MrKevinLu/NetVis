@@ -2,7 +2,7 @@
     <div class="bodyContainer main clearfx">
 
         <div class="colum main-left">
-            <sort-view></sort-view>
+            <auxiliary></auxiliary>
         </div>
 
         <div class="colum main-middle">
@@ -21,7 +21,7 @@
 import NetGraph from './middle/Graph.vue'
 import NetStat from './middle/Statistic.vue'
 import NetIndividual from './right/Individual.vue'
-import SortView from './left/SortView.vue'
+import Auxiliary from './left/Auxiliary.vue'
 
 
 export default {
@@ -45,7 +45,7 @@ export default {
         NetGraph,
         NetStat,
         NetIndividual,
-        SortView
+        Auxiliary
     }
 };
 </script>
@@ -63,6 +63,8 @@ export default {
 }
 
 .main-left{
+    display: flex;
+    flex-direction:column;
     flex:1;
     border-right: 2px solid grey;
 }

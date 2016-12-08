@@ -33,7 +33,7 @@ const state = {
         7:"t_cc",         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
         8:"t_venue"       // 文章发表在1.期刊 2.会议 3.both
     },
-    g_index_prop:["avgW","avgPub","avgDeg","avgDcent","avgCC","l_nodes","l_links","n_growth_rate","l_growth_rate"]
+    g_prop:["avgW","avgPub","avgDeg","avgDcent","avgCC","l_nodes","l_links","n_growth_rate","l_growth_rate"]
     // {
     //     0: "avgW",
     //     1: "avgPub",

@@ -5,9 +5,7 @@
 </template>
 
 <script>
-import {
-    mapGetters
-} from 'vuex'
+import {mapActions, mapGetters} from 'vuex'
 import Highcharts from 'highcharts'
 import d3 from '../../lib/d3-extend'
 
@@ -24,8 +22,8 @@ export default {
             "times",
             "g_attr_data"
         ]),
-        g_index_prop() {
-            return this.$store.state.g_index_prop
+        g_prop() {
+            return this.$store.state.g_prop
         },
         graph() {
             return this.$store.state.graph
@@ -40,17 +38,20 @@ export default {
     ready() {},
     attached() {},
     methods: {
+        ...mapActions([
+            "selectYear"
+        ]),
         getScale:function(){
             var g_attr_data = this.g_attr_data,
                 times = this.times,
-                g_index_prop = this.g_index_prop,
+                g_prop = this.g_prop,
                 scales = {},
                 domains = {},
                 series = [];
             var scale = d3.scaleLinear()
                             .range([0,1]);
 
-            for(let name of g_index_prop){
+            for(let name of g_prop){
                 scales[name] = {};
                 domains[name] = [];
                 for(let t of times){
@@ -62,7 +63,7 @@ export default {
                 var max = d3.max(domains[attr])
                 scales[attr] = scale.copy().domain([0,max])
             }
-            series = g_index_prop.map((attr,i)=>{
+            series = g_prop.map((attr,i)=>{
                 var mapData = domains[attr].map(v=>{
                     return scales[attr](v)
                 })
@@ -82,8 +83,9 @@ export default {
         },
 
         draw: function() {
-            var data = this.series;
-            var scales = this.scales;
+            var _this = this;
+            var data = _this.series;
+            var scales = _this.scales;
             Highcharts.chart('statistic', {
                 chart: {
                     type: 'area',
@@ -148,6 +150,14 @@ export default {
                             states: {
                                 hover: {
                                     enabled: true
+                                }
+                            }
+                        },
+                        point:{
+                            events:{
+                                click:function(e){
+                                    _this.selectYear(e.point.category);
+                                    console.log(e.point.category);
                                 }
                             }
                         }

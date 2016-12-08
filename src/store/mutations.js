@@ -41,6 +41,8 @@ export default {
             Vue.set(state.local_t_array,author,initTimes);
             state.hasInitial = true;
             console.log(state.selected);
+        }else{
+            alert(`User ${author} exist!`);
         }
     },
     /**
@@ -65,8 +67,8 @@ export default {
      * @param  {[type]} data  [description]
      * @return {[type]}       [description]
      */
-    [types.CHANGE_TIME](state,data){
-        state.currentTime = data;
+    [types.SELECT_YEAR](state,year){
+        state.currentTime = year;
     }
 
 }

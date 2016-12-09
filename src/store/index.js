@@ -14,6 +14,8 @@ export const initTimes = d3.range(27).map((d, i) => {
 const state = {
     graph:"",
     attr_data:"",
+    node_to_index:"",
+    mds:"",
     currentTime:"2010",
     hasInitial:false,
     clickNode:"",
@@ -50,6 +52,14 @@ const state = {
 const getters = {
     times:(state,getters)=>{
         return state.graph?Object.keys(state.graph).sort((a,b)=>a-b):[];
+    },
+    prop_index:(state,getters)=>{
+        var index_prop = state.index_prop,
+            prop_index = {}
+        Object.keys(index_prop).forEach(k=>{
+            prop_index[index_prop[k]] = k;
+        })
+        return prop_index;
     },
     // 全网属性
     g_attr_data:(state, getters)=>{
@@ -125,6 +135,17 @@ const getters = {
         }
 
         return g_attr_data;
+    },
+
+    index_to_node(state,getters){
+        var node_to_index = state.node_to_index;
+        if(node_to_index == '') return;
+
+        var index_to_node = {};
+        Object.keys(node_to_index).forEach(name=>{
+            index_to_node[node_to_index[name]] = name;
+        })
+        return index_to_node;
     },
 
     // 各个属性的1/4 和 3/4位点以及比例尺

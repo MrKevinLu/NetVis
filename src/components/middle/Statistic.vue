@@ -90,6 +90,7 @@ export default {
                 chart: {
                     type: 'area',
                     backgroundColor: '#969191',
+                    // marginTop:0,
                     marginBottom:25,
                     // marginRight:20,
                     showAxes: true,            //是否最初显示轴

@@ -1,13 +1,15 @@
 <template lang="html">
     <div class="contextCanvas">
-        <canvas width="550" height="500"></canvas>
+        <net-FDA :type="type" :time="currentTime"></net-FDA>
+        <net-MDS :type="type" :time="currentTime"></net-MDS>
     </div>
-
 </template>
 
 <script>
 import d3 from '../../lib/d3-extend'
 import Louvain from '../../lib/jLouvain'
+import NetFDA from './FDA.vue'
+import NetMDS from './MDS.vue'
 import {
     mapActions,
     mapGetters
@@ -17,25 +19,14 @@ export default {
     data() {
         return {
             community: null,
-            communityResult: {}
+            communityResult: {},
+            type:"mds"
         };
     },
 
     computed: {
-        graph() {
-            return this.$store.state.graph
-        },
-        prop_data() {
-            return this.$store.state.prop_data
-        },
-        currentTime(){
-            return this.$store.state.currentTime
-        },
-        nodes(){
-            return this.$store.state.graph[this.$store.state.currentTime].nodes
-        },
-        links(){
-            return this.$store.state.graph[this.$store.state.currentTime].links
+        currentTime:function(){
+            return this.$store.state.currentTime;
         }
     },
 
@@ -44,28 +35,28 @@ export default {
     },
 
     watch: {
+
         graph: function() {
             // this.drawCanvas();
             // this.draw();
         }
     },
 
-    created: function() {
-
-    },
-    beforeMount: function() {
-
-    },
-    updated: function() {
-
-    },
     mounted: function() {
         var _this = this;
+    },
+    components:{
+        NetFDA,
+        NetMDS
     },
     methods: {
         ...mapActions([
             'getAllData'
         ]),
+        drawMDS(){
+            var canvas = document.getElementById('mds'),
+                context = canvas.getContext("2d");
+        },
 
         nodeMouseover: function(d) {
             console.log(d3.event.target);

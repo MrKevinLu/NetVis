@@ -1,6 +1,8 @@
 import * as types from './mutation-types'
 const GRAPH_PATH = "../../data/graph.json"
 const PROPERTY_PATH = "../../data/node_attrs.json"
+const NODE_TO_INDEX_PATH = "../../data/node_to_index.json"
+const MDS_PATH = "../../data/mds.json"
 
 /**
  * 获取所有数据
@@ -10,7 +12,7 @@ const PROPERTY_PATH = "../../data/node_attrs.json"
 export const getAllData = ({commit}) => {
     var startTime = new Date();
 
-    Promise.all([getGraphData(), nodeAttrsData()]).then(function(data) {
+    Promise.all([getGraphData(), nodeAttrsData(),getNodeToIndex(),getMdsData()]).then(function(data) {
         // console.log(data);
         var endTime = new Date();
         console.log("获取数据花费：",(endTime-startTime)/1000);
@@ -60,6 +62,15 @@ export const selectYear = ({commit}, year)=>{
 }
 
 
+const getNodeToIndex = ()=>{
+    return new Promise((resolve,reject)=>{
+        fetch(NODE_TO_INDEX_PATH).then(res=>{
+            res.json().then(node_to_index =>{
+                resolve(node_to_index);
+            })
+        })
+    })
+}
 
 const getGraphData = () => {
     return new Promise((resolve, reject) => {
@@ -70,7 +81,15 @@ const getGraphData = () => {
         })
     })
 }
-
+const getMdsData = ()=>{
+    return new Promise((resolve, reject) => {
+        fetch(MDS_PATH).then(res => {
+            res.json().then(mds => {
+                resolve(mds)
+            })
+        })
+    })
+}
 const nodeAttrsData = () => {
     return new Promise((resolve, reject) => {
         fetch(PROPERTY_PATH).then(res => {

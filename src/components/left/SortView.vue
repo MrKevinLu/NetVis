@@ -1,5 +1,6 @@
 <template lang="html">
     <div class="sortView">
+
         <div class="controls">
             <div class="sortAttr clearfix">
                 <div v-for="attr in attrs" class="legend" :class="{color1:attr=='Deg',color2:attr=='Pub',color3:attr=='Both',activeSort:attr==sortType}" @click="changeSortType(attr)">{{attr}}</div>
@@ -9,23 +10,26 @@
             </div>
         </div>
         <div class="nodeList">
+            <div class="tooltip">
+
+            </div>
             <div class="n-row title">
                 <div class="flex-1">id</div>
                 <div class="flex-1">Deg</div>
                 <div class="flex-1">Pub</div>
             </div>
-            <div v-for="n in c_PageNodes" class="n-row">
+            <div v-for="n in c_PageNodes" class="n-row" @mouseover="mouseoverHandle(n[0],$event)" @mouseout="mouseoutHandle">
                 <div class="flex-1">
                     {{n[0]}}
                 </div>
                 <div class="flex-2 clearfix">
-                    <div class="data-col data-col-1" :style="{width:scales.a_deg(n[2][0])+'px'}"></div>
-                    <div class="data-col data-col-2" :style="{width:scales.a_pub(n[2][1])+'px'}"></div>
+                    <div class="data-col data-col-1" :style="{width:scales.a_deg(n[2][0])+'px'}" >{{hovered == n[0]?n[2][0]:""}}</div>
+                    <div class="data-col data-col-2" :style="{width:scales.a_pub(n[2][1])+'px'}" >{{hovered == n[0]?n[2][1]:""}}</div>
                 </div>
             </div>
         </div>
         <div class="page_divide">
-            <pagination v-on:changePage="changePage" :currentPage="c_PageIndex" :itemNum="4" :nodes="nodes" :totalNum="10"></pagination>
+            <pagination v-on:changePage="changePage" :currentPage="c_PageIndex" :itemNum="4" :nodes="nodes" :totalNum="Math.round(nodes.length/10)"></pagination>
         </div>
     </div>
 </template>
@@ -33,22 +37,27 @@
 <script>
 import Pagination from './Pagination.vue'
 import d3 from '../../lib/d3-extend'
+import {mapGetters} from 'vuex'
 
 export default {
     data() {
         return {
-            arr:[1,2,3,4,5,6,7,8,9,10],
             scales:'',
             sortType:"Both",
             c_PageNodes:[],
-            numOfEachPage:10,
+            numOfEachPage:15,
             c_PageIndex:1,
-            attrs:["Deg","Pub","Both"]
+            attrs:["Deg","Pub","Both"],
+            hovered:""
         };
     },
     computed: {
+        ...mapGetters([
+            'index_to_node'
+        ]),
         nodes:function(){
             var attr_data = this.$store.state.attr_data,
+                node_to_index = this.$store.state.node_to_index,
                 nodes={},
                 scales={
                     a_deg:'',
@@ -56,7 +65,6 @@ export default {
                 },
                 index = 1;
             if(attr_data=="") return [];
-            console.log(attr_data);
             for(let t in attr_data){
                 for(let name in attr_data[t]){
                     var values = attr_data[t][name];
@@ -66,9 +74,9 @@ export default {
                     }
                 }
             }
-            console.log(nodes);
+            // console.log(nodes);
             nodes = Object.keys(nodes).map((d,i)=>{
-                return [i,d,nodes[d]]
+                return [node_to_index[d],d,nodes[d]]
             });
 
             var deg_min_max = d3.extent(nodes,function(d){return d[2][0]});
@@ -87,13 +95,15 @@ export default {
             this.scales = scales;
 
             return nodes;
+        },
+
+        node_to_index(){
+            return this.$store.state.node_to_index;
         }
+
     },
-    events:{
-        "next-page":function(index){
-            this.pageIndex = index;
-        }
-    },
+
+
     methods: {
         sort:function(){
             var nodes = this.nodes,
@@ -122,11 +132,14 @@ export default {
             var pageIndex = this.c_PageIndex,
                 numOfEachPage = this.numOfEachPage;
             var start = (pageIndex-1)*numOfEachPage;
-            this.c_PageNodes = nodes.slice(start, start+numOfEachPage);
-            for(let n of this.c_PageNodes){
-                console.log(n[1],this.scales["a_deg"](n[2][0]),this.scales["a_pub"](n[2][1]));
-
+            if(start+numOfEachPage>nodes.length){
+                this.c_PageNodes = nodes.slice(start)
+            }else{
+                this.c_PageNodes = nodes.slice(start, start+numOfEachPage);
             }
+            // for(let n of this.c_PageNodes){
+            //     console.log(n[1],this.scales["a_deg"](n[2][0]),this.scales["a_pub"](n[2][1]));
+            // }
         },
         changePage(page){
             this.c_PageIndex = page;
@@ -135,6 +148,21 @@ export default {
         changeSortType(attr){
             this.sortType = attr;
 
+        },
+        mouseoverHandle(id,e){
+            this.hovered = id;
+            var index_to_node = this.index_to_node;
+            var x = e.layerX,
+                y = e.layerY;
+            d3.select(".sortView").select(".tooltip")
+                    .style("left",x+5+"px")
+                    .style("top",y-25+"px")
+                    .text(index_to_node[id])
+                    .style("display","block");
+        },
+        mouseoutHandle(){
+            d3.select(".sortView .tooltip").style("display","none");
+            this.hovered = "";
         }
 
     },
@@ -146,8 +174,6 @@ export default {
             this.sort();
         },
         c_PageIndex:function(){
-            console.log("++++++++++");
-            console.log(this.c_PageIndex);
             var nodes = this.nodes;
             var pageIndex = this.c_PageIndex,
                 numOfEachPage = this.numOfEachPage;
@@ -161,12 +187,26 @@ export default {
 };
 </script>
 
-<style lang="css">
+<style lang="css" scoped>
 .sortView{
     flex:1;
     display:flex;
     flex-direction: column;
     font-size:12px;
+}
+.tooltip{
+    position: absolute;
+    display:none;
+    border-radius:5px;
+    min-width:40px;
+    height:auto;
+    padding:5px 10px;
+    font-size:13px;
+    font-family: sans-serif;
+    font-weight: bold;
+    background-color: rgba(119, 107, 107,0.7);
+    color:white;
+    z-index:999;
 }
 .controls{
     width:100%;
@@ -174,6 +214,7 @@ export default {
     border-top: 1px lightgrey solid;
 }
 .nodeList{
+    position:relative;
     width:100%;
     flex:1;
 }
@@ -193,8 +234,11 @@ export default {
 .n-row{
     display:flex;
     flex:1;
-    line-height: 30px;
+    line-height: 20.5px;
     border-top: 1px lightgrey solid;
+}
+.n-row title{
+    background-color: #edeaea;
 }
 .n-row:last-child{
     border-bottom: 1px lightgrey solid;
@@ -218,7 +262,7 @@ export default {
 .data-col{
     float:left;
     margin-top:4px;
-    height:22px;
+    height:13px;
 }
 .data-col-1{
     background-color: pink;

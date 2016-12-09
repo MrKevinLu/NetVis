@@ -15,6 +15,8 @@ export default {
     [types.GET_ALL_DATA](state,data){
         state.graph = data[0];
         state.attr_data = data[1];
+        state.node_to_index = data[2];
+        state.mds = data[3];
     },
 
     /**

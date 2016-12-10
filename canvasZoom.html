@@ -142,7 +142,7 @@ function mouseup(e){
     brush = [];
 }
 function mousemove(e){
-    // console.log(e);
+    console.log(e);
     if(e.shiftKey==true){
         brush.target = [e.pageX,e.pageY];
         if(brush.source!=undefined && brush.target!=undefined)

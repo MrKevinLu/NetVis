@@ -1,10 +1,10 @@
 <template lang="html">
-    <div class="mdsCanvas">
+    <div class="mdsCanvas" v-show="type == 'MDS'">
         <div class="arrow arrow-left" @click="preTime">
         </div>
         <div class="arrow arrow-right" @click="nextTime">
         </div>
-        <canvas id="mds" width="550" height="500" v-if="type == 'mds'" @mousedown="mousedown" @mousemove="mousemove" @mouseup="mouseup"></canvas>
+        <canvas id="mds" width="550" height="550"  @mousedown="mousedown" @mousemove="mousemove" @mouseup="mouseup"></canvas>
     </div>
 </template>
 
@@ -48,6 +48,7 @@ export default {
             return this.$store.state.graph;
         },
         mds:function(){
+            this.initProperty();
             var t = this.time,
                 graph = this.graph,
                 attr_data = this.attr_data,
@@ -337,7 +338,7 @@ export default {
 
 }
 .arrow-left:hover, .arrow-right:hover{
-    /*opacity:0.2;*/
+    cursor:pointer;
 }
 .arrow-left:before{
     display:block;

@@ -1,6 +1,5 @@
 <template lang="html">
     <div id="community_dis">
-
     </div>
 </template>
 

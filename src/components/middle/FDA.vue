@@ -4,12 +4,21 @@
 
 <script>
 import d3 from '../../lib/d3-extend'
+const xScale = d3.scaleLinear()
+                .domain([0,550])
+                .range([0,550]);
+
+const yScale = d3.scaleLinear()
+                .domain([0,550])
+                .range([550,0]);
 
 export default {
     props:["type","time"],
     data() {
         return {
-            context:""
+            context:"",
+            newScaleX: xScale.copy(),
+            newScaleY: yScale.copy()
         };
     },
     computed: {
@@ -47,7 +56,13 @@ export default {
                 width = 550,
                 height = 550,
                 nodes = _this.nodes,
-                links = _this.links;
+                links = _this.links,
+                canvas = document.getElementById("fda");
+
+
+            var zoom = d3.zoom().scaleExtent([0.2, 16]).on("zoom", this.zoom);
+
+            d3.select(canvas).call(zoom);
 
             var simulation = d3.forceSimulation()
                 .force("link", d3.forceLink().id(function(d) {
@@ -61,7 +76,10 @@ export default {
 
             simulation
                 .nodes(nodes)
-                .on("tick", ticked);
+                .on("tick", ticked)
+                .on("end",function(){
+                    console.log("end");
+                });
 
             simulation.force("link")
                 .links(links);
@@ -81,31 +99,48 @@ export default {
 
         drawCircles(){
             var nodes = this.nodes,
-                ct = this.context;
-            for(let n of nodes){
+                ct = this.context,
+                x = this.newScaleX,
+                y = this.newScaleY;
+                // console.log(x.domain());
+            for(let [i,n] of nodes.entries()){
                 ct.beginPath();
                 ct.fillStyle = "red"
-                ct.arc(n.x, n.y, 2, 0, 2 * Math.PI);
+                if(i==1){
+                    // console.log(x(n.x),y(n.y));
+                }
+                ct.arc(x(n.x), y(n.y), 2, 0, 2 * Math.PI);
                 ct.fill();
                 ct.closePath();
             }
         },
         drawLinks(){
             var links = this.links,
-                ct = this.context;
+                ct = this.context,
+                x = this.newScaleX,
+                y = this.newScaleY;
             for(let l of links){
                 ct.beginPath()
                 ct.strokeStyle = "lightgrey";
                 ct.lineWidth = 2;
-                ct.moveTo(l.source.x,l.source.y);
-                ct.lineTo(l.target.x,l.target.y)
+                ct.moveTo(x(l.source.x),y(l.source.y));
+                ct.lineTo(x(l.target.x),y(l.target.y))
                 ct.stroke();
                 ct.closePath();
             }
+        },
+        zoom(){
+            this.newScaleX = d3.event.transform.rescaleX(xScale);
+            this.newScaleY = d3.event.transform.rescaleY(yScale);
+            this.draw();
         }
     },
     watch:{
-        graph:function(){
+        // graph:function(){
+        //     this.initCoordinate()
+        //     this.draw()
+        // },
+        nodes:function(){
             this.initCoordinate()
             this.draw()
         }

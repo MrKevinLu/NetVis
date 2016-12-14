@@ -57,7 +57,9 @@ table{
 table,tr,td{
     border:1px lightgrey solid;
 }
-
+tr:hover{
+    background-color: lightgrey;
+}
 .title{
     /*padding-left: 15px;*/
     font-weight:bold;

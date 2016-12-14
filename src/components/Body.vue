@@ -11,8 +11,7 @@
         </div>
 
         <div class="colum main-right">
-            <!-- <Demo v-for="(author,index) in selected" :key="index" :selected="author"></Demo> -->
-            <net-individual v-for="(author,index) in selected" :key="index" :selected="author" :classed="author.split(' ').join('')+'_individual'"></net-individual>
+            <net-individual v-for="(author,index) in selected" :key="index" :selected="author" :classed="author.split('.').join('').split(' ').join('')+'_individual'"></net-individual>
         </div>
     </div>
 </template>
@@ -38,8 +37,6 @@ export default {
 
     },
     mounted(){
-
-        console.log(`select: ${this.selected}`);
     },
     components: {
         NetGraph,

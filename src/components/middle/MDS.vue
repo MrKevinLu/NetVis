@@ -274,7 +274,7 @@ export default {
                     credits: { enabled:false },
 
                     xAxis: {
-                        categories: ['a_deg', 'a_pub', 'apub']
+                        categories: ['a_deg', 'a_pub', 't_pub']
                     },
                     legend: {
                     	enabled:false

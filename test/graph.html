@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Zoom + Pan</title>
+<style>
+    .overlay {
+        fill: none;
+        pointer-events: all;
+    }
+</style>
+
+<body>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="./lib/jLouvain.js"></script>
+    <script>
+        var width = 960,
+            height = 500,
+            canvas = d3.select("body").append("canvas")
+                        .attr("width", width)
+                        .attr("height", height)
+                        .node(),
+            context = canvas.getContext("2d"),
+            nodes,
+            links;
+
+        var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+        var simulation = d3.forceSimulation()
+                            .force("link",d3.forceLink().id(function(d){return d.id;}))
+                            .force("charge",d3.forceManyBody())
+                            .force("center",d3.forceCenter(width/2,height/2));
+
+        // var randomX = d3.randomNormal(width / 2, 80),
+        //     randomY = d3.randomNormal(height / 2, 80);
+
+        var x = d3.scaleLinear()
+            .domain([0, width])
+            .range([0, width]);
+
+        var y = d3.scaleLinear()
+            .domain([0, height])
+            .range([height, 0]);
+        var newScaleX = x.copy(),
+            newScaleY = y.copy();
+        d3.json("./data/graph.json",function(data){
+            var graph = data;
+            nodes = graph.nodes,
+            links = graph.links;
+            commu_detect();
+
+            simulation.nodes(nodes)
+                      .on("tick",ticked);
+            simulation.force("link")
+                     .links(links);
+
+        })
+        function ticked(){
+            draw();
+        }
+
+
+
+        var zoom = d3.zoom().scaleExtent([0.2, 8]).on("zoom", zoom);
+
+        d3.select(canvas)
+            // .call(d3.drag()
+            //         .container(canvas)
+            //         .subject(dragsubject)
+            //         .on("start", dragstarted)
+            //         .on("drag", dragged)
+            //         .on("end", dragended))
+            .call(zoom);
+
+
+
+
+
+        // draw();
+
+        function zoom() {
+
+            // context.save();
+            context.clearRect(0, 0, width, height);
+            newScaleX = d3.event.transform.rescaleX(x);
+            newScaleY = d3.event.transform.rescaleY(y);
+            draw();
+            // context.restore();
+        }
+        // function dragsubject() {
+        //     return simulation.find(d3.event.x, d3.event.y);
+        // }
+        //
+        // function dragstarted() {
+        //     if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+        //     d3.event.subject.fx = d3.event.subject.x;
+        //     d3.event.subject.fy = d3.event.subject.y;
+        // }
+        //
+        // function dragged() {
+        //     d3.event.subject.fx = d3.event.x;
+        //     d3.event.subject.fy = d3.event.y;
+        // }
+        //
+        // function dragended() {
+        //     if (!d3.event.active) simulation.alphaTarget(0);
+        //     d3.event.subject.fx = null;
+        //     d3.event.subject.fy = null;
+        // }
+
+
+        function draw() {
+            context.clearRect(0,0,width,height);
+            drawLinks();
+            drawNodes();
+        }
+        function drawNodes(){
+            // var n = nodes.length;
+            for(let n of nodes){
+                context.beginPath();
+                var cx = newScaleX(n.x),
+                    cy = newScaleY(n.y);
+                context.fillStyle=color(n.community);
+                context.arc(cx, cy, 2.5, 0, 2 * Math.PI);
+                context.fill();
+            }
+        }
+
+        function drawLinks(){
+            for(let l of links){
+                var source = l.source,
+                    target = l.target;
+                context.beginPath()
+                context.strokeStyle = "lightgrey"
+                context.moveTo(newScaleX(source.x),newScaleY(source.y))
+                context.lineTo(newScaleX(target.x),newScaleY(target.y));
+                context.stroke();
+            }
+        }
+        function commu_detect(){
+            var id_index = {}
+            var community = jLouvain().nodes(this.nodes.map((d, i) => {
+                id_index[d.id] = i;
+                return i;
+            })).edges(this.links.map(l => {
+                return {
+                    weight: l.weight || l.value,
+                    source: id_index[l.source],
+                    target: id_index[l.target]
+                };
+            }));
+            var community_assignment_result = community();
+
+            var max_community_number = 0;
+            this.nodes.forEach((d, i) => {
+                d.community = community_assignment_result[i];
+                max_community_number = max_community_number < community_assignment_result[i] ? community_assignment_result[i] : max_community_number;
+            })
+            console.log(max_community_number);
+        }
+    </script>

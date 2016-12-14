@@ -6,7 +6,13 @@
                 <div v-for="attr in attrs" class="legend" :class="{color1:attr=='Deg',color2:attr=='Pub',color3:attr=='Both',activeSort:attr==sortType}" @click="changeSortType(attr)">{{attr}}</div>
             </div>
             <div class="weight">
-                <span>weight:</span> <input type="range" max=1 step=0.1 value=0.5 style="display:inline-block"></input>
+                <span>weight:</span> <input type="range" max="1" step="0.1" v-model="weight" style="display:inline-block"></input>
+            </div>
+            <div class="showType">
+                <input type="radio" id="one" value="global" v-model="showType">
+                <label for="one">Global</label>
+                <input type="radio" id="two" value="snapshot" v-model="showType">
+                <label for="two">Snapshot</label>
             </div>
         </div>
         <div class="nodeList">
@@ -18,13 +24,13 @@
                 <div class="flex-1">Deg</div>
                 <div class="flex-1">Pub</div>
             </div>
-            <div v-for="n in c_PageNodes" class="n-row" @mouseover="mouseoverHandle(n[0],$event)" @mouseout="mouseoutHandle">
+            <div v-for="n in c_PageNodes" class="n-row" @mouseover="mouseoverHandle(n[0],$event)" @mouseout="mouseoutHandle" @click="selectHandler(n[0])">
                 <div class="flex-1">
                     {{n[0]}}
                 </div>
-                <div class="flex-2 clearfix">
-                    <div class="data-col data-col-1" :style="{width:scales.a_deg(n[2][0])+'px'}" >{{hovered == n[0]?n[2][0]:""}}</div>
-                    <div class="data-col data-col-2" :style="{width:scales.a_pub(n[2][1])+'px'}" >{{hovered == n[0]?n[2][1]:""}}</div>
+                <div class="attr-column flex-2 clearfix">
+                    <div :class="{'data-col-heat':sortType=='Both','data-col-seperate-1':sortType!='Both', 'data-col-1':true}" :style="{width:scales.a_deg(n[2][0])*2*weight+'px'}" >{{hovered == n[0]?n[2][0]:""}}</div>
+                    <div :class="{'data-col-heat':sortType=='Both','data-col-seperate-2':sortType!='Both', 'data-col-2':true}" :style="{width:scales.a_pub(n[2][1])*2*(1-weight)+'px'}" >{{hovered == n[0]?n[2][1]:""}}</div>
                 </div>
             </div>
         </div>
@@ -37,7 +43,7 @@
 <script>
 import Pagination from './Pagination.vue'
 import d3 from '../../lib/d3-extend'
-import {mapGetters} from 'vuex'
+import {mapGetters,mapActions} from 'vuex'
 
 export default {
     data() {
@@ -48,14 +54,16 @@ export default {
             numOfEachPage:15,
             c_PageIndex:1,
             attrs:["Deg","Pub","Both"],
-            hovered:""
+            hovered:"",
+            showType:"global",
+            weight:0.5
         };
     },
     computed: {
         ...mapGetters([
             'index_to_node'
         ]),
-        nodes:function(){
+        ori_nodes:function(){
             var attr_data = this.$store.state.attr_data,
                 node_to_index = this.$store.state.node_to_index,
                 nodes={},
@@ -96,6 +104,20 @@ export default {
 
             return nodes;
         },
+        nodes:function(){
+            var showType = this.showType,
+                nodes = this.ori_nodes,
+                time = this.$store.state.currentTime,
+                attr_data = this.$store.state.attr_data;
+
+            if(showType == "global")
+                return nodes;
+            else{
+                return nodes.filter(d=>{
+                    return attr_data[time][d[1]]!=undefined?true:false;
+                })
+            }
+        },
 
         node_to_index(){
             return this.$store.state.node_to_index;
@@ -105,13 +127,16 @@ export default {
 
 
     methods: {
+        ...mapActions([
+            "addIndividual"
+        ]),
         sort:function(){
             var nodes = this.nodes,
                 type = this.sortType,
                 deg_scale = this.scales.a_deg,
                 pub_scale = this.scales.a_pub,
-                percent1 = 0.5,
-                percent2 = 0.5;
+                percent1 = this.weight,
+                percent2 = 1-percent1;
             //排序
             if(type == "Both"){
                 nodes.sort((a,b)=>{
@@ -163,6 +188,10 @@ export default {
         mouseoutHandle(){
             d3.select(".sortView .tooltip").style("display","none");
             this.hovered = "";
+        },
+        selectHandler(id){
+            var index_to_node = this.index_to_node;
+            this.addIndividual(index_to_node[id]);
         }
 
     },
@@ -179,6 +208,12 @@ export default {
                 numOfEachPage = this.numOfEachPage;
             var start = (pageIndex-1)*numOfEachPage;
             this.c_PageNodes = nodes.slice(start, start+numOfEachPage);
+        },
+        showType:function(n){
+            console.log(this.nodes.length);
+        },
+        weight:function(n){
+            this.sort();
         }
     },
     components: {
@@ -253,17 +288,34 @@ export default {
     flex:2;
     text-align: left;
 }
+.attr-column{
+    position: relative;
+}
 .clearfix:after{
     display:block;
     content:'';
     opacity: none;
     clear:both;
 }
-.data-col{
+.data-col-heat{
     float:left;
     margin-top:4px;
     height:13px;
 }
+.data-col-seperate-1,.data-col-seperate-2{
+    position:absolute;
+}
+.data-col-seperate-1{
+    left:0;
+    top:4px;
+    height:13px;
+}
+.data-col-seperate-2{
+    left:64px;
+    top:4px;
+    height:13px;
+}
+
 .data-col-1{
     background-color: pink;
 }

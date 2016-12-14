@@ -39,7 +39,6 @@ export default {
         // console.log(state.selected);
         if(!(author in state.local_t_array)){
             state.selected.push(author);
-            // state.local_t_array[author] = initTimes;
             Vue.set(state.local_t_array,author,initTimes);
             state.hasInitial = true;
             console.log(state.selected);

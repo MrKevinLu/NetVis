@@ -2,95 +2,88 @@
 <meta charset="utf-8">
 <title>Zoom + Pan</title>
 <style>
-
-.overlay {
-  fill: none;
-  pointer-events: all;
-}
-
+    .overlay {
+        fill: none;
+        pointer-events: all;
+    }
 </style>
+
 <body>
-<script src="https://d3js.org/d3.v4.min.js"></script>
-<script>
-
-var width = 960,
-    height = 500;
-
-var randomX = d3.randomNormal(width / 2, 80),
-    randomY = d3.randomNormal(height / 2, 80);
-
-var x = d3.scaleLinear()
-    .domain([0, width])
-    .range([0, width]);
-
-var y = d3.scaleLinear()
-    .domain([0, height])
-    .range([height, 0]);
-
-var data = d3.range(2000).map(function() {
-  return [
-    randomX(),
-    randomY()
-  ];
-});
-var canvas = d3.select("body").append("canvas")
-    .attr("width", width)
-    .attr("height", height);
-
-var context = canvas.node().getContext("2d");
-
-var zoom = d3.zoom().scaleExtent([1,8]).on("zoom",zoom);
-
-canvas.call(zoom);
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script>
+        var width = 960,
+            height = 500,
+            canvas = d3.select("body").append("canvas")
+                        .attr("width", width)
+                        .attr("height", height)
+                        .node(),
+            context = canvas.getContext("2d");
 
 
+        var randomX = d3.randomNormal(width / 2, 80),
+            randomY = d3.randomNormal(height / 2, 80);
+
+        var x = d3.scaleLinear()
+            .domain([0, width])
+            .range([0, width]);
+
+        var y = d3.scaleLinear()
+            .domain([0, height])
+            .range([height, 0]);
+        var newScaleX = x.copy(),
+            newScaleY = y.copy();
+        var data = d3.range(2000).map(function() {
+            return [
+                randomX(),
+                randomY()
+            ];
+        });
+
+
+        var zoom = d3.zoom().scaleExtent([0.2, 8]).on("zoom", zoom);
+
+        d3.select(canvas).call(zoom);
 
 
 
 
-draw();
 
-function zoom() {
-  // console.log(d3.event);
-  context.save();
-  context.clearRect(0, 0, width, height);
-  // context.translate(d3.event.transform.x, d3.event.transform.y);
-  // context.scale(d3.event.transform.k, d3.event.transform.k);
+        draw();
 
-  // x.domain(d3.event.transform.rescaleX(x).domain());
-  // y = d3.event.transform.rescaleY(y);
-  // console.log(d3.event.transform.rescaleX(x).range());
-  draw();
-  context.restore();
-}
+        function zoom() {
 
-function transform() {
-  return d3.zoomIdentity
-        .translate(d3.zoomIdentity.rescaleX(x),d3.zoomIdentity.rescaleY(y));
-        // .scale(d3.event.transform.k, d3.event.transform.k);
-}
+            // context.save();
+            context.clearRect(0, 0, width, height);
+            newScaleX = d3.event.transform.rescaleX(x);
+            newScaleY = d3.event.transform.rescaleY(y);
+            // console.log(d3.event.transform.rescaleX(x).domain());
+            draw();
+            // context.restore();
+        }
 
-function draw() {
-console.log(d3.event);
-  var i = -1, n = data.length, d;
-  context.beginPath();
-  while (++i < n) {
-    d = data[i];
+        
 
-    if(!d3.event){
-        cx = x(d[0]),
-        cy = y(d[1])
-    }else{
-        cx = d3.event.transform.rescaleX(x)(d[0]);
-        cy = d3.event.transform.rescaleX(y)(d[1]);
-    }
-    if(i==1){
-        console.log(cx,cy);
-    }
-    context.moveTo(d[0], d[1]);
-    context.arc(d[0], d[1], 2.5, 0, 2 * Math.PI);
-  }
-  context.fill();
-}
 
-</script>
+        function draw() {
+
+            var i = -1,
+                n = data.length,
+                d;
+            context.beginPath();
+            while (++i < n) {
+                d = data[i];
+
+
+                cx = newScaleX(d[0]),
+                cy = newScaleY(d[1]);
+
+                if (i == 1) {
+                    console.log(newScaleX.domain());
+                    console.log(newScaleY.domain());
+                }
+                context.moveTo(cx, cy);
+                context.arc(cx, cy, 2.5, 0, 2 * Math.PI);
+            }
+            context.fill();
+        }
+    </script>

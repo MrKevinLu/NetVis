@@ -19,9 +19,9 @@ const state = {
     currentTime:"2010",
     hasInitial:false,
     clickNode:"",
-    selected:["Huamin Qu","Kwan-Liu Ma"],
+    selected:["Kwan-Liu Ma","Daniel A. Keim"], //"Huamin Qu",
     local_t_array: {
-        "Huamin Qu":initTimes,
+        "Daniel A. Keim":initTimes,
         "Kwan-Liu Ma":initTimes
     },
     index_prop:{

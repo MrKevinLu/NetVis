@@ -762,10 +762,6 @@ export default {
                     ])
                     .on("brush", brushing)
                     .on("end", brushended));
-            // 节点和线
-            var line = svg.append("g").datum(domains_deg).append("path")
-                .attr("class", "linepath")
-                .attr("d", line);
 
             var bars = svg.append("g")
                           .selectAll(".bar")
@@ -786,6 +782,12 @@ export default {
                           .attr("fill",function(){
                               return d3.rgb(101, 147, 237,0.5)
                           });
+            // 节点和线
+            var line = svg.append("g").datum(domains_deg).append("path")
+                .attr("class", "linepath")
+                .attr("d", line);
+
+
 
             var nodes = svg.append("g")
                 .selectAll(".node")

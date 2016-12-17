@@ -1,6 +1,6 @@
 <template lang="html">
     <div id="g_network_view">
-        <!-- <net-FDA :type="type" :time="currentTime"></net-FDA> -->
+        <net-FDA :type="type" :time="currentTime"></net-FDA>
         <net-MDS :type="type" :time="currentTime"></net-MDS>
     </div>
 </template>
@@ -22,7 +22,7 @@ export default {
         return {
             community: null,
             communityResult: {},
-            type:"MDS"
+            type:"FDA"
         };
     },
 

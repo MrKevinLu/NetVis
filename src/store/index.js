@@ -16,7 +16,7 @@ const state = {
     attr_data:"",
     node_to_index:"",
     mds:"",
-    currentTime:"2010",
+    currentTime:"2013",
     hasInitial:false,
     clickNode:"",
     selected:["Kwan-Liu Ma","Daniel A. Keim"], //"Huamin Qu",

@@ -27,16 +27,22 @@
             nodes,
             links,
             hoverNode = '',
-            ori_graph;
+            ori_graph,
+            k = 0.1,
+            scale = "",
+            rScale = "",
+            colorScale = "";
 
         var color = d3.scaleOrdinal(d3.schemeCategory20);
 
         var simulation = d3.forceSimulation()
-                            .force("link",d3.forceLink().id(function(d){return d.id;}).distance(function(d){
-                                // console.log(d);
-                                return (d.source.children||d.target.children)?80:30
+                            .force("link",d3.forceLink().id(function(d){return d.id||d.name;}).distance(function(d){
+                                return (d.source.community == d.target.community)?10:70
                             }))
-                            .force("charge",d3.forceManyBody())
+                            .force("charge",d3.forceManyBody().strength(function(d){
+                                // console.log(d);
+                                return -30;
+                            }))
                             .force("center",d3.forceCenter(width/2,height/2));
 
 
@@ -50,50 +56,116 @@
             .range([height, 0]);
         var newScaleX = x.copy(),
             newScaleY = y.copy();
+        var zoom = d3.zoom().scaleExtent([0.1, 8]).on("zoom", zoom);
 
+        d3.select(canvas)
+            .call(zoom)
         canvas.addEventListener("mousemove",mousemove_hoveron);
         canvas.addEventListener("mouseout",mouseout_hoverout);
 
-        // d3.json("./graph.json",function(data1){
-        //     console.log(data1);
-        // })
-        d3.json("./data/small_graph.json",function(graph){
+        d3.json("./graph.json",function(graph){
             // var graph = statistic(data)
             // var graph = data["2013"];
+            graph = graph["2013"];
             ori_graph = graph;
             nodes = graph.nodes,
             links = graph.links;
+            compute_deg(nodes,links);
             commu_detect();
+            var degs = nodes.map(n=>{return n.deg;})
+            console.log(degs.sort((a,b)=>{
+                return b-a
+            }));
+
+            //为每个社团添加一个中心节点，但不显示
+            var map = d3.nest().key(function(d){return d.community}).map(nodes);
+            var metaNodes = getMetaGraph(graph).nodes;
+            links.forEach(l=>{
+                l.source = l.source.name;
+                l.target = l.target.name;
+            })
+            // links.forEach(l=>{
+            //     if(typeof l.source =='object') console.log(true);
+            //     if(typeof l.target =='object') console.log(true);
+            // })
+            metaNodes.forEach(mn=>{
+                if(mn.children.length>1){
+                    var name = "hidden"+mn.group;
+                    // var node = {
+                    //     name:"hidden"+mn.group,
+                    //     _deg:mn.children.length,
+                    //     community:mn.group
+                    // };
+                    // console.log(map.get(mn.group));
+                    map.get(mn.group).forEach(n=>{
+                        links.push({
+                            "source":name,
+                            "target":n.name
+                        })
+                    })
+                }
+            })
+            metaNodes.forEach(mn=>{
+                if(mn.children.length>1){
+                    var node = {
+                        name:"hidden"+mn.group,
+                        deg:mn.children.length,
+                        community:mn.group
+                    };
+                    nodes.push(node);
+                }
+            })
             console.log(nodes.length);
-            var n_graph = getMetaGraph(graph);
-            nodes = n_graph.nodes
-            links = n_graph.links
-
-            var metaNodes = nodes;
-
-            // for(let mnode of metaNodes){
-            //     if(mnode.children){
+            var nmap = d3.nest().key(function(d){return d.name}).map(nodes);
+            // console.log(nmap.get("Xiaogang Jin 0001"));
+            // console.log(nmap.get("Lizhuang Ma"));
+            links.forEach(l=>{
+                var source = l.source,
+                    target = l.target;
+                l.source = nmap.get(l.source)[0]
+                l.target = nmap.get(l.target)[0]
+                // if(!nmap.has(source)) console.log(source);
+                // if(!nmap.has(target)) console.log(target);
+            })
+            // var nmap = d3.nest().key(function(d){return d.name}).map(nodes);
+            // console.log(map);
+            // for(let l of links){
+            //     var source = l.source,
+            //         target = l.target;
+            //     // console.log(map.has(source))
+            //     if(nmap.has(source.name)==false) console.log(source);
+            //     // console.log(nmap.has(source));
+            //     // if(!map.has(source)) console.log(source);
+            //     // if(!map.has(target)) console.log(target);
+            //     // debugger;
             //
-            //         var t_nodes = mnode.children,
-            //             t_links = [],
-            //             ids = {};
-            //         t_nodes.forEach(n=>{
-            //             var id = n.id||n.name;
-            //             ids[id] = 1;
-            //         })
-            //         // console.log(ids);
-            //         graph.links.forEach(l=>{
-            //             // console.log(l.source,l.target);
-            //             // var id = l.source.id||l.source.name?;
-            //             if(ids[l.source.id] && ids[l.target.id]){
-            //                 // console.log(true);
-            //                 t_links.push(l);
-            //             }
-            //         })
-            //         // console.log(t_links);
-            //     }
-            //     layout(t_nodes,t_links);
             // }
+            // for(let n of nodes){
+            //     console.log(n);
+            //     if(n.name == "hidden0"){
+            //         console.log(n);
+            //         // console.log(true);
+            //         // debugger;
+            //     }
+            // }
+
+
+            var min_max = d3.extent(degs)
+            console.log(min_max);
+            // scale = d3.scaleQuantize()
+            //           .domain(min_max)
+            //           .range([0.5,0.4,0.3,0.2,0.1]);
+            scale = d3.scaleLinear()
+                    .domain([0,21])
+                    .range([1, 0.1]);
+            rScale = d3.scaleLinear()
+                      .domain(min_max)
+                      .range([2,5]);
+            console.log(rScale.range());
+            console.log(rScale.domain());
+
+            d3.select(canvas).call(zoom.scaleTo,0.1)
+
             simulation.nodes(nodes)
                       .on("tick",ticked);
             simulation.force("link")
@@ -101,21 +173,18 @@
 
         })
 
-        function layout(nodes,links){
-            var simulation = d3.forceSimulation()
-                                .force("link",d3.forceLink().id(function(d){return d.id||d.name;}).distance(function(d){
-                                    return (d.source.children||d.target.children)?80:10
-                                }))
-                                .force("charge",d3.forceManyBody())
-                                .force("center",d3.forceCenter(width/2,height/2));
-            simulation.nodes(nodes)
-                      .on("tick",ticked);
-            simulation.force("link")
-                     .links(links);
+
+        function compute_deg(nodes,links){
+            var nodesById = d3.map(nodes,function(d){return d.name});
+            nodes.forEach(n=>n.deg=0);
+            for(let l of links){
+                var s = l.source,
+                    t = l.target;
+
+                nodesById.get(s).deg++;
+                nodesById.get(t).deg++
+            }
         }
-
-
-
         // d3.json("./graph.json",function(data){
         //     var graph = statistic(data)
         //     // var graph = data["2013"];
@@ -132,22 +201,13 @@
         //
         // })
         function ticked(){
-            console.log(true);
+            // console.log(true);
             draw();
         }
 
 
 
-        var zoom = d3.zoom().scaleExtent([0.2, 8]).on("zoom", zoom);
 
-        d3.select(canvas)
-            // .call(d3.drag()
-            //         .container(canvas)
-            //         .subject(dragsubject)
-            //         .on("start", dragstarted)
-            //         .on("drag", dragged)
-            //         .on("end", dragended))
-            .call(zoom);
 
 
 
@@ -157,70 +217,72 @@
 
         function zoom() {
 
-            // context.save();
+            k = d3.event.transform.k
+            // console.log(k);
             context.clearRect(0, 0, width, height);
             newScaleX = d3.event.transform.rescaleX(x);
             newScaleY = d3.event.transform.rescaleY(y);
             draw();
-            // context.restore();
+
         }
-        // function dragsubject() {
-        //     return simulation.find(d3.event.x, d3.event.y);
-        // }
-        //
-        // function dragstarted() {
-        //     if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-        //     d3.event.subject.fx = d3.event.subject.x;
-        //     d3.event.subject.fy = d3.event.subject.y;
-        // }
-        //
-        // function dragged() {
-        //     d3.event.subject.fx = d3.event.x;
-        //     d3.event.subject.fy = d3.event.y;
-        // }
-        //
-        // function dragended() {
-        //     if (!d3.event.active) simulation.alphaTarget(0);
-        //     d3.event.subject.fx = null;
-        //     d3.event.subject.fy = null;
-        // }
 
 
         function draw() {
+
             context.clearRect(0,0,width,height);
             drawBackground()
+            // context.shadowOffsetX = 0;
+            // context.shadowOffsetY = 0;
+            // context.shadowBlur    = 40;
+            // context.shadowColor   = "yellow";  //or use rgb(red, green, blue)
+            // // context.globalAlpha = 0.5;
+            // context.fillStyle = "rgba(128,128,128,1)";
+            // context.arc(100,100, 40, 0, 2*Math.PI);
+            // context.fill();
+
+            // context.fillStyle = "#000066";
+            // context.font = "30px Arial";
+            // context.fillText("HTML5 Canvas Shadow", 10,120);
+            // drawShadows()
             drawLinks();
             drawNodes();
             // drawTooltip(hoverNode);
         }
+        function drawShadows(){
+            for(let [i,n] of nodes.entries()){
+                var grad  = context.createRadialGradient(cx,cy,0,cx,cy,r)
+                grad.addColorStop(0,"white")
+                grad.addColorStop(1,color(n.community))
+            }
+        }
         function drawNodes(){
             // var n = nodes.length;
             for(let [i,n] of nodes.entries()){
-
+                if(n.deg<5 && k<0.8) continue;
+                if(n.name.startsWith("hidden")) continue;
                 context.beginPath();
-                // console.log(n);
                 var cx = newScaleX(n.x)||0,
                     cy = newScaleY(n.y)||0,
-                    r = 4;
-                // console.log(cx,cy,r);
-                var grad  = context.createRadialGradient(cx,cy,0,cx,cy,r)
-                grad.addColorStop(0,"white")
-                grad.addColorStop(1,color(i))
-                context.fillStyle = grad;
+                    r = rScale(n.deg);
+                // var grad  = context.createRadialGradient(cx,cy,0,cx,cy,r)
+                // grad.addColorStop(0,"white")
+                // grad.addColorStop(1,color(n.community))
+                context.fillStyle = mapColor(n.community);
 
 
                 if(n.hoveron == true){
                     r = r*1.5;
                     context.lineWidth = 3;
-                    context.strokeStyle = "white"
+                    context.strokeStyle = 'rgba(255,255,255,1)'
 
                 }
                 context.arc(cx, cy, r, 0, 2 * Math.PI);
-                context.fill();
                 if(n.hoveron == true){
                     context.stroke();
                 }
-                context.closePath()
+                context.fill();
+
+                // context.closePath()
 
 
             }
@@ -232,7 +294,6 @@
                 context.font = 'bold 20px consolas';
                 context.textAlign = 'left';
                 context.textBaseline = 'top';
-                context.fillStyle="none";
                 context.strokeText("hello", newScaleX(hoverNode.x)+15,newScaleY(hoverNode.y)-15);
                 context.closePath()
             }
@@ -242,15 +303,32 @@
             context.beginPath()
             context.fillStyle="black";
             context.fillRect(0,0,width,height);
-            context.closePath();
+
         }
         function drawLinks(){
             for(let l of links){
                 var source = l.source,
                     target = l.target;
+
+                if(source.name.startsWith("hidden") || target.name.startsWith("hidden")) continue;
+
+                if(scale(source.deg)>k || scale(target.deg)>k)  continue;
+                // var width = Math.sqrt(l.weight);
                 context.beginPath()
-                context.strokeStyle = 'rgba(201, 199, 199,0.3)'
-                context.lineWidth = Math.sqrt(l.weight)
+                context.lineWidth = 1;
+                context.strokeStyle = 'rgba(255, 170, 0, 0.4)'
+                // context.strokeStyle = 'rgba(201, 199, 199,0.3)'
+                if(hoverNode!=''){
+                    var id = source.id?"id":"name";
+                    if((source[id] == hoverNode[id]||target[id]==hoverNode[id])){
+                        context.lineWidth = 2;
+                        context.strokeStyle = 'rgba(255,255,255,0.7)'
+                    }else{
+                        context.lineWidth = 1;
+                        context.strokeStyle = 'rgba(201, 199, 199,0.1)'
+                    }
+
+                }
                 context.moveTo(newScaleX(source.x),newScaleY(source.y))
                 context.lineTo(newScaleX(target.x),newScaleY(target.y));
                 context.stroke();
@@ -277,27 +355,34 @@
                 max_community_number = max_community_number < community_assignment_result[i] ? community_assignment_result[i] : max_community_number;
             })
             console.log(max_community_number);
+            colorScale = d3.scaleLinear()
+                            .domain([0,max_community_number])
+                            .range([0,1])
         }
 
         function mousemove_hoveron(e){
             var x = e.pageX,
-                y = e.pageY;
-            nodes.forEach(n=>{
-                var r = 2.5+Math.sqrt(n.children.length);
+                y = e.pageY,
+                flag = false;
+            for(let n of nodes){
+                var r = rScale(n.deg);;
                 if(Math.pow(x-newScaleX(n.x),2)+Math.pow(y-newScaleY(n.y),2)<=r*r){
                     n.hoveron = true;
                     hoverNode = n;
-                    console.log(true);
+                    flag = true;
                 }else{
                     n.hoveron = false;
-                    // console.log(false);
                 }
-            })
+            }
+            if(!flag) hoverNode = '';
             draw();
         }
         function mouseout_hoverout(e){
             hoverNode = '';
             draw();
+        }
+        function mapColor(group){
+            return d3.interpolateRainbow(colorScale(group));
         }
         function getMetaGraph(graph){
             var nodes = graph.nodes,
@@ -358,8 +443,6 @@
                 if(typeof ml.target !='object') ml.target = nodeByGroupId.get(ml.target);
             }
 
-            // console.log(metaNodes);
-            // console.log(metaLinks);
             return {
                 nodes:metaNodes,
                 links:metaLinks
@@ -406,8 +489,8 @@
                     name:d
                 }
             })
-            console.log("nodes:",Object.keys(nodeName).length);
-            console.log("links:",allLinks.length);
+            // console.log("nodes:",Object.keys(nodeName).length);
+            // console.log("links:",allLinks.length);
             return {
                 nodes:allNodes,
                 links:allLinks

@@ -92,8 +92,8 @@ export default {
                 nodes = this.nodes,
                 brushes = this.brushes;
                 window.onkeydown = this.keydown;
-                ct.clearRect(0,0, 550,550);
 
+                ct.clearRect(0,0, 550,550);
                 this.drawCricles(ct, nodes);
                 this.drawBrush(ct, brushes);
 

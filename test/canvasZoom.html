@@ -42,7 +42,7 @@
 
         var zoom = d3.zoom().scaleExtent([0.2, 8]).on("zoom", zoom);
 
-        d3.select(canvas).call(zoom);
+        d3.select(canvas).call(zoom).call(zoom.scaleTo,0.2);
 
 
 
@@ -61,7 +61,7 @@
             // context.restore();
         }
 
-        
+
 
 
         function draw() {

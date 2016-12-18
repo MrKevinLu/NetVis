@@ -1,9 +1,6 @@
 <template lang="html">
     <div class="mdsCanvas" v-show="type == 'MDS'">
-        <div class="arrow arrow-left" @click="preTime">
-        </div>
-        <div class="arrow arrow-right" @click="nextTime">
-        </div>
+
         <canvas id="mds" width="550" height="550"  @mousedown="mousedown" @mousemove="mousemove" @mouseup="mouseup"></canvas>
     </div>
 </template>
@@ -15,9 +12,11 @@ import Vue from 'Vue'
 import Highcharts from 'highcharts'
 
 export default {
-    props:["type","time"],
+    props:["type","time","searchNode"],
     data() {
         return {
+            canvasDom:'',
+            context:'',
             brushes:[],
             brush:{},
             margin:{
@@ -82,44 +81,65 @@ export default {
             return nodes;
         }
     },
+    mounted(){
+        this.initContext();
+    },
     methods: {
         ...mapActions([
             'selectYear'
         ]),
+        initContext(){
+            var canvas = document.getElementById('mds'),
+                ctx = canvas.getContext('2d');
+            this.context = ctx;
+            this.canvasDom = canvas;
+            this.initEventHandlers();
+        },
+        initEventHandlers(){
+            window.onkeydown = this.keydown;
+        },
         draw:function(){
-            var canvas = document.getElementById("mds"),
-                ct = canvas.getContext("2d"),
-                nodes = this.nodes,
-                brushes = this.brushes;
-                window.onkeydown = this.keydown;
-
-                ct.clearRect(0,0, 550,550);
-                this.drawCricles(ct, nodes);
-                this.drawBrush(ct, brushes);
+                this.clearCanvas();
+                this.drawBackground();
+                this.drawNodes();
+                this.drawBrush();
 
         },
-        drawCricles(ct,nodes){
+        clearCanvas(){
+            var ctx = this.context;
+            ctx.clearRect(0,0, 550,550);
+        },
+        drawBackground(){
+            var ctx = this.context;
+            ctx.fillStyle = "black";
+            ctx.fillRect(0,0,550,550);
+        },
+        drawNodes(){
+            var ctx = this.context,
+                nodes = this.nodes;
             for(let n of nodes){
-                ct.beginPath();
+                ctx.beginPath();
                 if(n.selected == true){
-                    ct.fillStyle = n.color;
+                    ctx.fillStyle = n.color;
                 }else{
-                    ct.fillStyle = "lightgrey"
+                    ctx.fillStyle = "lightgrey"
                 }
-                ct.arc(n[0],n[1],2,0,2*Math.PI);
-                ct.fill();
-                ct.closePath();
+                ctx.arc(n[0],n[1],2,0,2*Math.PI);
+                ctx.fill();
+                ctx.closePath();
             }
         },
-        drawBrush(ct, brushes){
+        drawBrush(){
+            var ctx = this.context,
+                brushes = this.brushes;
             for(let b of brushes){
                 var source = b.source,
                     target = b.target;
-                ct.beginPath();
-                ct.lineWidth = 2;
-                ct.strokeStyle = b.color;
-                ct.strokeRect(source[0],source[1],target[0]-source[0],target[1]-source[1])
-                ct.closePath();
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = b.color;
+                ctx.strokeRect(source[0],source[1],target[0]-source[0],target[1]-source[1])
+                ctx.closePath();
             }
         },
         mousedown(e){
@@ -187,23 +207,10 @@ export default {
                 if(n[0]>=source[0] && n[1]>=source[1] && n[0]<=target[0] && n[1]<=target[1]){
                     n.selected = true;
                     n.color = color;
+                }else{
+                    if(n.color==color)
+                        n.selected = false;
                 }
-            }
-        },
-        preTime(){
-            var time = this.time,
-                times = this.times;
-            if(time>times[0]){
-                this.initProperty();
-                this.selectYear(+time-1);
-            }
-        },
-        nextTime(){
-            var time = this.time,
-                times = this.times;
-            if(time<times[times.length-1]){
-                this.initProperty()
-                this.selectYear(+time+1);
             }
         },
         initProperty(){
@@ -310,6 +317,7 @@ export default {
             this.draw();
         },
         time:function(){
+            this.initProperty();
             this.draw();
         }
     },
@@ -321,37 +329,5 @@ export default {
 .mdsCanvas{
     position: relative;
 }
-.arrow{
-    position:absolute;
-    opacity:0.2;
-}
-.arrow-left{
-    top:275px;
-    left:10px;
-    background-color: grey;
 
-}
-.arrow-right{
-    right:10px;
-    top:275px;
-    background-color: grey;
-
-}
-.arrow-left:hover, .arrow-right:hover{
-    cursor:pointer;
-}
-.arrow-left:before{
-    display:block;
-    content:"<";
-    font-size:40px;
-    color:black;
-    padding-top:5px;
-}
-.arrow-right:before{
-    display:block;
-    content:">";
-    font-size:40px;
-    color:black;
-    padding-top:5px;
-}
 </style>

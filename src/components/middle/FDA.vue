@@ -15,7 +15,7 @@ const yScale = d3.scaleLinear()
                 .range([550,0]);
 
 export default {
-    props:["type","time"],
+    props:["type","time","searchNode"],
     data() {
         return {
             context:"",
@@ -39,7 +39,12 @@ export default {
         nodes:function(){
             var time = this.time;
             if(this.graph!=""){
-                return this.graph[time].nodes;
+                return this.graph[time].nodes.map(n=>{
+                    return {
+                        name:n.name
+                    }
+                })
+                // return this.graph[time].nodes;
             }else{
                 return [];
             }
@@ -47,7 +52,15 @@ export default {
         links:function(){
             var time = this.time;
             if(this.graph!=""){
-                return this.graph[time].links;
+                return this.graph[time].links.map(l=>{
+                    return {
+                        source:l.source,
+                        target:l.target,
+                        weight:l.weight,
+                        venue:l.venue
+                    }
+                })
+                // return this.graph[time].links;
             }else{
                 return [];
             }
@@ -177,16 +190,23 @@ export default {
                 xScale = this.newScaleX,
                 yScale = this.newScaleY,
                 rScale = this.rScale,
-                color = this.nodeColor;
+                color = this.nodeColor,
+                searchNode = this.searchNode;
+
 
             for(let [i,n] of nodes.entries()){
                 if(n.name.startsWith("group")) continue;
                 ctx.beginPath();
                 ctx.fillStyle = color(n.community)
-                var r = n.hoveron?rScale(n.deg)*1.5:rScale(n.deg);
+                var r = (n.hoveron==true || searchNode==n.name)?rScale(n.deg)*1.5:rScale(n.deg);
+                // if(n.hoveron || this.searchNode==n.name ){
+                //     r = rScale(n.deg);
+                // }else{
+                //     r = rScale(n.deg);
+                // }
                 ctx.arc(xScale(n.x), yScale(n.y), r, 0, 2 * Math.PI);
                 ctx.fill();
-                if(n.hoveron){
+                if(n.hoveron || searchNode==n.name){
                     ctx.lineWidth = 2;
                     ctx.strokeStyle = "white";
                     ctx.stroke();
@@ -198,14 +218,15 @@ export default {
                 ctx = this.context,
                 xScale = this.newScaleX,
                 yScale = this.newScaleY,
-                hoverNode = this.hoverNode;
+                hoverNode = this.hoverNode,
+                searchNode = this.searchNode;
             for(let l of links){
                 if(l.source.name.startsWith("group") || l.target.name.startsWith("group")) continue;
                 ctx.beginPath()
                 ctx.lineWidth = 1;
                 ctx.strokeStyle = 'rgba(255, 170, 0, 0.4)'
-                if(hoverNode!=''){
-                    if(l.source.name == hoverNode.name || l.target.name==hoverNode.name){
+                if(hoverNode!='' || searchNode==l.source.name || searchNode == l.target.name){
+                    if(l.source.name == hoverNode.name || l.target.name==hoverNode.name || l.source.name == searchNode || l.target.name == searchNode){
                         ctx.lineWidth = 2;
                         ctx.strokeStyle = 'rgba(255,255,255,0.7)'
                     }else{
@@ -224,12 +245,14 @@ export default {
                 yScale = this.newScaleY;
             if(hoverNode!=""){
                 ctx.beginPath()
+                // ctx.fillStyle = 'rgba(0,0,0,0.7)'
+                // ctx.fillRect(xScale(hoverNode.x),yScale(hoverNode.y))
                 // ctx.lineWidth = 1;
                 ctx.fillStyle = "lightgrey"
-                ctx.font = 'bold 14px Georgia';
+                ctx.font = 'bold 12px Georgia';
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'top';
-                ctx.fillText(hoverNode.name, xScale(hoverNode.x)+15,yScale(hoverNode.y)-15);
+                ctx.fillText("name:"+hoverNode.name+'\n'+"deg:"+hoverNode.deg, xScale(hoverNode.x)+15,yScale(hoverNode.y)-20);
             }
         },
         zoom(){
@@ -362,6 +385,13 @@ export default {
         graph:function(){
             this.initCoordinate()
             this.draw()
+        },
+        time:function(){
+            this.initCoordinate();
+            this.draw();
+        },
+        nodes:function(){
+            console.log("nodes changed");
         }
     },
     components: {}

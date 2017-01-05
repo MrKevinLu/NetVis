@@ -25,7 +25,7 @@ const prop_index = {
 };
 
 export default {
-    props:['path_group',"index","orderAttr","mapAttr","local_timeScale","classed","scales"],
+    props:['path_group',"index","orderAttr","mapAttr","local_timeScale","classed","nodeAttrScales","cal_x","cal_y","getDataByAttr","color"],
     data() {
         return {};
     },
@@ -37,21 +37,21 @@ export default {
             return context.toString();
         },
         /*****   节点颜色映射方案   ****/
-        color(mapAttr,node){
-            var scales = this.scales,
-                values = node.values;
-            if(mapAttr == "default"){
-                var isPreExsit = node.data.isPreExsit;
-                return isPreExsit==1?"lightgrey":(isPreExsit==2?"green":"purple");
-            }else if(mapAttr!="t_venue"){
-                var scale = scales[mapAttr],
-                    value = values[prop_index[mapAttr]];
-                return chroma.scale(['yellow', 'red'])(scale(value));
-            }else{
-                var scale = scales["t_venue"].range(["red","blue","orange"]);
-                return scale(values[prop_index[mapAttr]])
-            }
-        },
+        // color(mapAttr,node){
+        //     var scales = this.nodeAttrScales,
+        //         values = node.values;
+        //     if(mapAttr == "default"){
+        //         var isPreExsit = node.data.isPreExsit;
+        //         return isPreExsit==1?"lightgrey":(isPreExsit==2?"green":"purple");
+        //     }else if(mapAttr!="t_venue"){
+        //         var scale = scales[mapAttr],
+        //             value = values[prop_index[mapAttr]];
+        //         return chroma.scale(['#fee0d2', '#de2d26'])(scale(value));
+        //     }else{
+        //         var scale = scales["t_venue"].range(["red","blue","orange"]);
+        //         return scale(values[prop_index[mapAttr]])
+        //     }
+        // },
         drawPath(context,group){
             var start = group[0],
                 len = group.length,
@@ -69,41 +69,41 @@ export default {
             }
         },
 
-        cal_x(node){
-            var timeScale = this.local_timeScale;
-            return timeScale(node.time);
-        },
-
-        cal_y(node){
-            var orderAttr =this.orderAttr;
-            var y,
-                item_padding = 2,   // 节点之间间距
-                group_padding = 8,  // 子群之间间距
-                r = 3,          // 圆半径或者rect高度的一半
-                height = 308;   // 绘制空间
-
-            if(orderAttr != "cluster"){
-                var scale = d3.scalePoint()
-                             .padding(0.7)
-                             .domain([1,2,3])
-                             .range([height,0])
-
-                var groupIndex = node.data.group.gIndex,
-                    len = node.data.group.len,
-                    index = node.data.group.index;
-                y = scale(groupIndex)-((len-1)/2*(item_padding+r))+(index-1)*(item_padding+2*r);
-            }else{
-                var numOfG = node.data.cluster.numOfG,
-                    tIndex = node.data.cluster.tIndex,
-                    len = node.data.cluster.len,
-                    gIndex = node.data.cluster.gIndex;
-
-                var padding_top = (height-len*(2*r+item_padding)+item_padding*numOfG-(numOfG-1)*group_padding)/2;
-                y = padding_top + r+(tIndex-1)*(item_padding+2*r)+(gIndex-1)*group_padding;
-            }
-
-            return y;
-        },
+        // cal_x(node){
+        //     var timeScale = this.local_timeScale;
+        //     return timeScale(node.time);
+        // },
+        //
+        // cal_y(node){
+        //     var orderAttr =this.orderAttr;
+        //     var y,
+        //         item_padding = 2,   // 节点之间间距
+        //         group_padding = 8,  // 子群之间间距
+        //         r = 3,          // 圆半径或者rect高度的一半
+        //         height = 308;   // 绘制空间
+        //
+        //     if(orderAttr != "cluster"){
+        //         var scale = d3.scalePoint()
+        //                      .padding(0.7)
+        //                      .domain([1,2,3])
+        //                      .range([height,0])
+        //
+        //         var groupIndex = node.data.group.gIndex,
+        //             len = node.data.group.len,
+        //             index = node.data.group.index;
+        //         y = scale(groupIndex)-((len-1)/2*(item_padding+r))+(index-1)*(item_padding+2*r);
+        //     }else{
+        //         var numOfG = node.data.cluster.numOfG,
+        //             tIndex = node.data.cluster.tIndex,
+        //             len = node.data.cluster.len,
+        //             gIndex = node.data.cluster.gIndex;
+        //
+        //         var padding_top = (height-len*(2*r+item_padding)+item_padding*numOfG-(numOfG-1)*group_padding)/2;
+        //         y = padding_top + r+(tIndex-1)*(item_padding+2*r)+(gIndex-1)*group_padding;
+        //     }
+        //
+        //     return y;
+        // },
 
         mouseOverHandler(event){
             var _this = this;
@@ -160,9 +160,9 @@ export default {
             })
         },
 
-        getDataByAttr(selection, attrName){
-            return JSON.parse(selection.attr(attrName))
-        }
+        // getDataByAttr(selection, attrName){
+        //     return JSON.parse(selection.attr(attrName))
+        // }
     },
     components: {}
 };

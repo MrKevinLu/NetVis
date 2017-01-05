@@ -15,11 +15,12 @@
                         <g class="axis-container">
 
                         </g>
+                        <g class="nodesBrush"></g>
                         <g class="path-group">
-                            <edge v-for="(l,index) in links" :key="index" :path_group="l" :local_timeScale="local_timeScale" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover" :scales="quantile_scales.scales"></edge>
+                            <edge v-for="(l,index) in links" :key="index" :path_group="l" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></edge>
                         </g>
                         <g class="node-group">
-                            <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover" :scales="quantile_scales.scales"></node>
+                            <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></node>
                         </g>
                     </g>
             </svg>
@@ -38,35 +39,25 @@ import jLouvain from '../../lib/jLouvain'
 import dat from '../../lib/dat.gui.min'
 import {mapActions,mapGetters} from "vuex"
 
-const index_prop = {
-    0:"a_deg",      // 总的节点度，非时变
-    1:"a_pub",        // 总的发表量，非时变
-    2:"t_avgW",       // 平均边权重，时变
-    3:"t_pub",        // 当年发表量，时变
-    4:"t_deg",     // 当年的节点度，时变
-    5:"t_dCent",   // 度中心性 节点的度/N-1  N为所有节点，时变
-    6:"t_avgC",       // 邻居节点的平均度中心性，时变
-    7:"t_cc",         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
-    8:"t_venue"       // 文章发表在1.期刊 2.会议 3.both
-};
+// const index_prop = {
+//     0:"a_deg",      // 总的节点度，非时变
+//     1:"a_pub",        // 总的发表量，非时变
+//     2:"t_avgW",       // 平均边权重，时变
+//     3:"t_pub",        // 当年发表量，时变
+//     4:"t_deg",     // 当年的节点度，时变
+//     5:"t_dCent",   // 度中心性 节点的度/N-1  N为所有节点，时变
+//     6:"t_avgC",       // 邻居节点的平均度中心性，时变
+//     7:"t_cc",         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
+//     8:"t_venue"       // 文章发表在1.期刊 2.会议 3.both
+// };
+//
 
-const prop_index = {
-    "a_deg":0,      // 总的节点度，非时变
-    "a_pub":1,        // 总的发表量，非时变
-    "t_avgW":2,       // 平均边权重，时变
-    "t_pub":3,        // 当年发表量，时变
-    "t_deg":4,     // 当年的节点度，时变
-    "t_dCent":5,   // 度中心性 节点的度/N-1  N为所有节点，时变
-    "t_avgC":6,       // 邻居节点的平均度中心性，时变
-    "t_cc":7,         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
-    "t_venue":8       // 文章发表在1.期刊 2.会议 3.both
-};
 
 export default {
-    props:["selected","index","classed"],
+    props:["selected","index","classed","attr_data","timeArray"],
     data() {
         return {
-            time_range: ["1990", "2016"],  // 总的时间范围
+            // time_range: ["1990", "2016"],  // 总的时间范围
             orderAttr: "cluster",
             mapAttr: "default",
             local_y_scale:"",
@@ -75,27 +66,23 @@ export default {
             svgHeight: 358,
             axisHeight: 50,
             isShowed:true,
+            local_t_array:[...this.timeArray],
             margin: {
-                top: 10,
+                top: 20,
                 left: 10,
                 right: 10,
                 bottom: 10
-            }
-
-            // nodes:[[10,10],[20,20],[30,30]]
+            },
+            selectNodes:[]
         };
     },
     computed: {
         ...mapGetters([
-            "quantile_scales"
+            "quantile_scales",
+            "prop_index"
         ]),
-        // 总时间范围，时间序列
-        timeArray() {
-            var tr = this.time_range;
-            var timeArray = d3.range(Number(tr[1]) - Number(tr[0]) + 1).map((d, i) => {
-                return Number(tr[0]) + i + "";
-            })
-            return timeArray;
+        index_prop(){
+            return this.$store.state.index_prop;
         },
         hasInitial(){
             return this.$store.state.hasInitial;
@@ -111,13 +98,17 @@ export default {
 
             return t_scale;
         },
-        local_t_array(){
-            var tmp = this.$store.state.local_t_array[this.selected];
-            return tmp;
+        nodeAttrScales(){
+            return this.quantile_scales.scales;
         },
+        // local_t_array(){
+        //     var tmp = this.$store.state.local_t_array[this.selected];
+        //     return tmp;
+        // },
 
         // 局部横坐标比例尺
         local_timeScale(){
+            // console.log("local_timeScale change");
             var local_t_array = this.local_t_array;
             var width = this.svgWidth - this.margin.left - this.margin.right;
             var t_scale = d3.scalePoint()
@@ -126,41 +117,6 @@ export default {
                 .range([0, width]);
             return t_scale;
         },
-        // 合作者数组，{time,data}
-        nodes() {
-            var startTime = new Date();
-            var graph = this.$store.state.graph,
-                attr_data = this.$store.state.attr_data;
-            if (graph == "") return [];
-            var local_t_array = this.local_t_array,
-                selected = this.selected,
-                coNodes = [];
-
-            for (let t of local_t_array) {
-                var nodes = graph[t].nodes;
-                var nodeByName = d3.map(nodes, function(d) {
-                    return d.name;
-                });
-                var links = graph[t].links;
-                for (let l of links) {
-                    var source = typeof l.source == "object" ? l.source.name : l.source,
-                        target = typeof l.target == "object" ? l.target.name : l.target;
-                    if (source == selected) coNodes.push({
-                        time: t,
-                        data: nodeByName.get(target),
-                        values:attr_data[t][target]
-                    })
-                    if (target == selected) coNodes.push({
-                        time: t,
-                        data: nodeByName.get(source),
-                        values:attr_data[t][source]
-                    })
-                }
-            }
-            var endTime = new Date();
-            // console.log("nodes takes:",(endTime-startTime)/1000);
-            return coNodes;
-        },
         links(){
             var startTime = new Date();
             var nodes = this.nodes,
@@ -168,7 +124,7 @@ export default {
                 coNames,
                 coNames_seq = {},
                 links = [];
-            if(!nodes) return links;
+            if(nodes==[] || !nodes) return links;
             for(let n of nodes){
                 coNames_seq[n.data.name] = []
             }
@@ -233,14 +189,52 @@ export default {
                 }
 
             }
+            // console.log("links +++++++11111")
+
             var endTime = new Date();
-            // console.log("links takes:",(endTime-startTime)/1000);
+            console.log("links takes:",(endTime-startTime)/1000);
             return links;
         },
+        // 合作者数组，{time,data}
+        nodes() {
+            var startTime = new Date();
+            var graph = this.$store.state.graph,
+                attr_data = this.$store.state.attr_data;
+            if (graph == "") return [];
+            var local_t_array = this.local_t_array,
+                selected = this.selected,
+                coNodes = [];
 
-        attr_data(){
-            return this.$store.state.attr_data;
+            for (let t of local_t_array) {
+                var nodes = graph[t].nodes;
+                var nodeByName = d3.map(nodes, function(d) {
+                    return d.name;
+                });
+                var links = graph[t].links;
+                for (let l of links) {
+                    var source = typeof l.source == "object" ? l.source.name : l.source,
+                        target = typeof l.target == "object" ? l.target.name : l.target;
+                    if (source == selected) coNodes.push({
+                        time: t,
+                        data: nodeByName.get(target),
+                        values:attr_data[t][target]
+                    })
+                    if (target == selected) coNodes.push({
+                        time: t,
+                        data: nodeByName.get(source),
+                        values:attr_data[t][source]
+                    })
+                }
+            }
+
+            var endTime = new Date();
+            console.log("nodes takes:",(endTime-startTime)/1000);
+            // console.log("nodes +++++++22222")
+            return coNodes;
         },
+
+
+        //个体中心每年的属性值数组
         ego_values(){
             var selected = this.selected,
                 attr_data = this.$store.state.attr_data,
@@ -252,9 +246,46 @@ export default {
                 }
             }
             return t_values;
+        },
+
+        // 个体中心坐标轴y轴比例尺，主要是每个属性的domain
+        egoAxisScales_seq(){
+            var startTime = new Date();
+            var attr_data = this.attr_data,
+                selected = this.selected,
+                local_t_array = this.local_t_array,
+                prop_index = this.prop_index,
+                index_prop = this.index_prop,
+                scales = {},
+                ego_values_seq={};
+            Object.keys(prop_index).forEach(k=>{
+                scales[k]=[];
+                ego_values_seq[k]=[];
+            });
+            for(let t of local_t_array){
+                if(!attr_data[t][selected]) continue;
+                var values = attr_data[t][selected];
+                for(let [i,v] of values.entries()){
+                    var attr = index_prop[i];
+                    ego_values_seq[attr].push([t,v]);
+                }
+            }
+            Object.keys(ego_values_seq).forEach(k=>{
+                if(k!="t_venue"){
+                    var extent = d3.extent(ego_values_seq[k],d=>d[1]);
+                    scales[k] = d3.scaleLinear().domain(extent);
+                }else{
+                    var values = Array.from(new Set(ego_values_seq[k].map(n=>n[1])));
+                    scales[k] = d3.scaleOrdinal().domain(values);
+                }
+            })
+            var endTime = new Date();
+            // console.log("ego takes:",(endTime-startTime)/1000);
+            return {scales,ego_values_seq}
         }
     },
     beforeMount(){
+        // 在添加作者时，需要对节点进行排序；添加时hasInitial为true
         if(this.hasInitial){
             this.node_classified(this.orderAttr);
         }
@@ -264,13 +295,15 @@ export default {
         var c = _this.classed;
 
         d3.select("."+c).select(".wrap-g").attr("transform", "translate(" + _this.margin.left + "," + _this.margin.top + ")");
-        d3.select("."+c).select(".wrap-g .node-group").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight) + ")");
-        d3.select("."+c).select(".wrap-g .path-group").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight) + ")");
+        d3.select("."+c).select(".wrap-g .nodesBrush").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight-5) + ")");
+        d3.select("."+c).select(".wrap-g .node-group").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight-5) + ")");
+        d3.select("."+c).select(".wrap-g .path-group").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight-5) + ")");
         if(_this.hasInitial){
             _this.is_axis_drawed = true;
             _this.drawAxis();
         }
         _this.generateControls();
+        // this.initBrush();
     },
     watch: {
         orderAttr:function(n,o){
@@ -278,23 +311,109 @@ export default {
         },
         nodes: function(n, o) {
             if(!this.is_axis_drawed){
+                console.log("first")
                 this.is_axis_drawed = true;
+                this.node_classified(this.orderAttr);
                 this.drawAxis();
+                // console.log(11111);
             }
+        },
+        selectNodes:function(){
+            console.log("selectNodes change");
         },
         links:function(){
             this.node_classified(this.orderAttr);
+            // console.log(22222);
         }
 
     },
     methods: {
         ...mapActions([
-            "changeLocalTArray",
             "addIndividual",
             "deleteIndividual"
         ]),
         changeHover(){
 
+        },
+        initBrush(){
+            var _this = this,
+                width = this.svgWidth,
+                height = this.svgHeight-this.axisHeight,
+                c = this.classed,
+                getDataByAttr = this.getDataByAttr,
+                cal_x = this.cal_x,
+                cal_y = this.cal_y,
+                // mapAttr = this.mapAttr,
+                nodeColor = this.nodeColor;
+                // local_timeScale = this.local_timeScale;
+
+            var svg = d3.select("."+c).select(".wrap-g .nodesBrush").append("g")
+                        .attr("class","brush")
+                        .call(d3.brush().extent([
+                            [0,0],
+                            [width,height]
+                        ]).on("start",brushStart)
+                          .on("brush",brushing)
+                          .on("end",brushended));
+            function brushStart(){
+                var nodes = _this.nodes;
+                // _this.selectNodes.splice(0)
+                d3.select("."+c).selectAll(".i_item").style("fill",function(d){
+                    var node = getDataByAttr(d3.select(this),"data-item");
+                    // console.log(_this.mapAttr);
+                    return nodeColor(_this.mapAttr,node);
+                })
+                d3.select("."+c).selectAll(".i_path").style("stroke","lightgrey")
+            }
+            function brushended() {
+                if (!d3.event.sourceEvent) return; // Only transition after input.
+                if (!d3.event.selection) return; // Ignore empty selections.
+                // console.log(d3.event.selection);
+                var [[x1,y1], [x2,y2]] = d3.event.selection;
+                var names;
+                d3.select("."+c).selectAll(".i_item").each(function(d,i){
+                    var d = getDataByAttr(d3.select(this),"data-item");
+                    var [x,y] = [cal_x(d), cal_y(d)];
+                    if(x>=x1 && x<=x2 && y>=y1 && y<=y2){
+                        if(!names) names = {};
+                        names[d.data.name] = 1;
+                    }
+                })
+
+
+                // if(names){
+                //     _this.selectNodes.splice(0)
+                //     _this.selectNodes.push(...names)
+                // }
+
+                if(names){
+                    d3.select("."+c).selectAll(".i_item").style("fill",function(d,i){
+                        var d = getDataByAttr(d3.select(this),"data-item");
+                        if(names[d.data.name]==1){
+                            return "gold"
+                        }else{
+                            return "lightgrey"
+                        }
+
+                    })
+
+                    d3.select("."+c).selectAll(".i_path").style("stroke",function(){
+                        var d = getDataByAttr(d3.select(this),"data-item");
+
+                        if(names[d[0].data.name]==1){
+                            return "gold";
+                        }else{
+                            return "lightgrey";
+                        }
+                    })
+                }
+
+
+            }
+            function brushing() {
+                if (!d3.event.sourceEvent) return; // Only transition after input.
+                if (!d3.event.selection) return; // Ignore empty selections.
+            }
         },
         /******* 关闭折叠事件 ********/
         closePanel(){
@@ -388,15 +507,15 @@ export default {
                 times = Array.from(new Set(nodes.map(d=>d.time))).sort((a,b)=>a-b),
                 // local_t_array = this.local_t_array,
                 quantile = this.quantile_scales.prop_quantile,
-                prop_index = {},    // 属性名-序号的映射
+                prop_index = this.prop_index,    // 属性名-序号的映射
                 t_g_num = {},   // 存储每年不同组的节点个数
                 t_nodes = {};   // 按年存节点
 
             // for(let t of times) t_nodes[t] = [];
             // for(let n of nodes) t_nodes[n.time].push(n.data);
-            for(let i in index_prop){
-                prop_index[index_prop[i]] = i
-            }
+            // for(let i in index_prop){
+            //     prop_index[index_prop[i]] = i
+            // }
             var q_1 = quantile[orderAttr][0],
                 q_3 = quantile[orderAttr][1];
             console.log(q_1,q_3);
@@ -652,7 +771,7 @@ export default {
         },
         /**************************/
 
-        node_classified(orderAttr="t_pub"){
+        node_classified(orderAttr){
             var startTime = new Date();
             if(orderAttr == "cluster"){
                 this.sortByCluster();
@@ -660,112 +779,85 @@ export default {
                 this.sortByAttr(orderAttr);
             }
             var endTime = new Date();
-            // console.log("sort takes:",(endTime-startTime)/1000);
+            console.log("sort takes:",(endTime-startTime)/1000);
 
         },
-        // cal_y(node){
-        //     var orderAttr =this.orderAttr;
-        //     var y,
-        //         item_padding = 2,   // 节点之间间距
-        //         group_padding = 8,  // 子群之间间距
-        //         r = 3,          // 圆半径或者rect高度的一半
-        //         height = 308;   // 绘制空间
-        //
-        //     if(orderAttr != "cluster"){
-        //         var scale = d3.scalePoint()
-        //                      .padding(0.7)
-        //                      .domain([1,2,3])
-        //                      .range([height,0])
-        //
-        //         var groupIndex = node.data.group.gIndex,
-        //             len = node.data.group.len,
-        //             index = node.data.group.index;
-        //         y = scale(groupIndex)-((len-1)/2*(item_padding+r))+(index-1)*(item_padding+2*r);
-        //     }else{
-        //         var
-        //             drawHeight = height-padding*2,
-        //             numOfG = node.data.cluster.numOfG,
-        //             tIndex = node.data.cluster.tIndex,
-        //             len = node.data.cluster.len,
-        //             gIndex = node.data.cluster.gIndex;
-        //
-        //         var padding_top = height-len*(2*r+item_padding)+item_padding-(numOfG-1)*group_padding;
-        //         y = padding_top + r+(tIndex-1)*(item_padding+2*r)+(gIndex-1)*group_padding;
-        //     }
-        //
-        //     return y;
-        // },
+
 
         /******** 绘制头部坐标轴  **********/
         drawAxis() {
             var _this = this;
             var width = _this.svgWidth - _this.margin.left - _this.margin.right,
                 selected = _this.selected,
-                ego_values = _this.ego_values,
+                // ego_values = _this.ego_values,
                 height = _this.axisHeight,
                 padding = 5,
+                margin = _this.margin,
                 timeScale = _this.timeScale,
-                time_deg = {},
                 timeArray = _this.timeArray,
+                prop_index = _this.prop_index,
                 nodeColor = d3.color("#f9be86"),
-                changeLocalTArray = _this.changeLocalTArray,
-                c = this.classed,
-                scales = _this.quantile_scales.scales,
-                another_attr = "t_cc";
+                local_t_array = _this.local_t_array,
+                c = _this.classed,
+                another_attr = "t_cc",
+                {scales,ego_values_seq} = this.egoAxisScales_seq,
+                axisScaleTop = timeScale.copy(),
+                axisScaleBottom = timeScale.copy();
+
+            // console.log(ego_values_seq);
 
 
-            _this.nodes.forEach((d, i) => {
-                time_deg[d.time] ? (time_deg[d.time]++) : (time_deg[d.time] = 1)
-            })
 
-            var domains_deg = Object.keys(time_deg).sort().map(k => {
-                return [k, time_deg[k]]
-            });
+            var domains_1 = ego_values_seq["t_deg"];
+            var domains_2 = ego_values_seq[another_attr];
 
-            var domains_another = Object.keys(ego_values).sort((a,b)=>a-b).map(t=>{
-                return [t, ego_values[t][prop_index[another_attr]]]
-            })
+            // if(selected == "Daniel A. Keim"){
+            //     console.log(domains_deg);
+            //     console.log(domains_another);
+            // }
+            var brush = d3.brushX()
+                            .extent([
+                                [0, -margin.top],
+                                [width, 0]
+                            ])
+                            .on("brush", brushing)
+                            .on("end", brushended)
+            var y_axis_scale_deg = scales["t_deg"].range([height - padding, padding]);
 
-            var min_max_deg = d3.extent(domains_deg.map(d => {
-                return d[1]
-            }));
-
-            var y_axis_scale_deg = d3.scaleLinear()
-                .domain(min_max_deg)
-                .range([height - padding, padding]);
-            var y_axis_scale_another = scales[another_attr].copy().range([height - padding, padding])
+            var y_axis_scale_another = scales[another_attr].range([height - padding, padding]);
 
             var svg = d3.select("."+c).select(".axis-container");
             var line = d3.line()
-                .x(d => timeScale(d[0]))
+                .x(d => axisScaleBottom(d[0]))
                 .y(d => y_axis_scale_deg(d[1]));
+            var axisB = d3.axisBottom(axisScaleBottom).tickSize(-height).tickFormat(function(d){return d.substr(-2,2)});
+            var axisT = d3.axisTop(axisScaleTop).tickFormat(function(d){return d.substr(-2,2)});
             // 坐标轴
-            svg.append("g")
-                .attr("class", "axis--grid")
-                .attr("transform", "translate(0," + height + ")")
-                .call(d3.axisBottom(timeScale)
-                    .tickSize(-height)
-                    .tickFormat(function(d) {
-                        return d.substr(-2, 2);
-                    }))
-                .selectAll(".tick")
-                // .classed("tick--minor", true)
-                .selectAll("text").attr("dy", 10);
-
+            // var topAxis = svg.append("g")
+            //                     .attr("class","axis--grid")
+            //                     .call(axisT)
+            var bottomAxis = svg.append("g")
+                                .attr("class", "bottom axis--grid")
+                                .attr("transform", "translate(0," + height + ")")
+                                .call(axisB)
+                                .selectAll(".tick")
+                                // .classed("tick--minor", true)
+                                .selectAll("text").attr("dy", 10);
+            var topAxis = svg.append("g")
+                            .attr("class", "top axis--grid")
+                            // .attr("transform", "translate(0," + height + ")")
+                            .call(axisT)
+                            .selectAll(".tick")
+                            // .classed("tick--minor", true)
+                            .selectAll("text").attr("dy", 5);
             // 刷子brush
             svg.append("g")
                 .attr("class", "brush")
-                .call(d3.brushX()
-                    .extent([
-                        [0, 0],
-                        [width, height]
-                    ])
-                    .on("brush", brushing)
-                    .on("end", brushended));
+                .call(brush);
 
             var bars = svg.append("g")
                           .selectAll(".bar")
-                          .data(domains_another)
+                          .data(domains_2)
                           .enter()
                           .append("rect")
                           .attr("class","bar")
@@ -774,7 +866,7 @@ export default {
                               return height-y_axis_scale_another(d[1]);
                           })
                           .attr("x",function(d){
-                              return timeScale(d[0])-5;
+                              return axisScaleBottom(d[0])-5;
                           })
                           .attr("y",function(d){
                               return y_axis_scale_another(d[1])
@@ -783,7 +875,7 @@ export default {
                               return d3.rgb(101, 147, 237,0.5)
                           });
             // 节点和线
-            var line = svg.append("g").datum(domains_deg).append("path")
+            var line_path = svg.append("g").datum(domains_1).append("path")
                 .attr("class", "linepath")
                 .attr("d", line);
 
@@ -791,11 +883,11 @@ export default {
 
             var nodes = svg.append("g")
                 .selectAll(".node")
-                .data(domains_deg)
+                .data(domains_1)
                 .enter()
                 .append("circle")
                 .attr("class", "node")
-                .attr("cx", d => timeScale(d[0]))
+                .attr("cx", d => axisScaleBottom(d[0]))
                 .attr("cy", d => y_axis_scale_deg(d[1]))
                 .attr("r", 3)
                 .attr("fill", nodeColor);
@@ -812,34 +904,79 @@ export default {
                         return true
                     else return false;
                 })
-                var clen = current_t_range.length,
-                    llen = _this.local_t_array.length;
 
-                if(_this.local_t_array[0]!=current_t_range[0] || _this.local_t_array[llen-1]!=current_t_range[clen-1]){
-                    changeLocalTArray({
-                        name:_this.selected,
-                        range:current_t_range
+                var clen = current_t_range.length,
+                    llen = local_t_array.length;
+
+                if(local_t_array[0]!=current_t_range[0] || local_t_array[llen-1]!=current_t_range[clen-1]){
+                    axisScaleBottom = axisScaleBottom.domain(current_t_range)
+
+                    /**************   更新视图   ************/
+                    svg.select(".bottom.axis--grid").call(axisB).selectAll("text").attr("dy", 10);
+                    //update
+                    var newBarData = domains_2.filter(n=>{
+                        return n[0]>=current_t_range[0] && n[0]<=current_t_range[clen-1];
                     });
+                    var newNodeData = domains_1.filter(n=>{
+                        return n[0]>=current_t_range[0] && n[0]<=current_t_range[clen-1];
+                    })
+                    // update bars
+                    var barUpdate = svg.selectAll(".bar").data(newBarData,function(n){return n[0]});
+                    barUpdate.attr("x",function(d){return axisScaleBottom(d[0])-5});
+                    barUpdate.enter().append("rect")
+                                    .attr("class","bar")
+                                    .attr("width",10)
+                                    .attr("height",function(d){
+                                        return height-y_axis_scale_another(d[1]);
+                                    })
+                                    .attr("x",function(d){
+                                        return axisScaleBottom(d[0])-5;
+                                    })
+                                    .attr("y",function(d){
+                                        return y_axis_scale_another(d[1])
+                                    })
+                                    .attr("fill",function(){
+                                        return d3.rgb(101, 147, 237,0.5)
+                                    });
+                    barUpdate.exit().remove();
+                    // update line
+                    line_path.datum(newNodeData).attr("d",line);
+                    //update nodes
+                    var nodeUpdate = svg.selectAll(".node").data(newNodeData,function(d){return d[0]});
+                    nodeUpdate.attr("cx",function(d){return axisScaleBottom(d[0])});
+                    nodeUpdate.enter().append("circle")
+                                .attr("class", "node")
+                                .attr("cx", d => axisScaleBottom(d[0]))
+                                .attr("cy", d => y_axis_scale_deg(d[1]))
+                                .attr("r", 3)
+                                .attr("fill", nodeColor);
+                    nodeUpdate.exit().remove();
+
+                    /**************************************/
+
+                    local_t_array.splice(0);
+                    local_t_array.push(...current_t_range);
                 }
 
             }
             function brushing() {
                 if (!d3.event.sourceEvent) return; // Only transition after input.
                 if (!d3.event.selection) return; // Ignore empty selections.
-                var [x1, x2] = d3.event.selection
-                d3.select("."+c).selectAll(".axis-container .node").each((d, i, eles) => {
-                    if (timeScale(d[0]) >= x1 && timeScale(d[0]) <= x2) {
-                        d3.select(eles[i]).attr("fill", nodeColor.brighter(1.5))
-                    } else {
-                        d3.select(eles[i]).attr("fill", nodeColor)
-                    }
-                })
+                // var [x1, x2] = d3.event.selection
+                // d3.select("."+c).selectAll(".axis-container .node").each((d, i, eles) => {
+                //     if (timeScale(d[0]) >= x1 && timeScale(d[0]) <= x2) {
+                //         d3.select(eles[i]).attr("fill", nodeColor.brighter(1.5))
+                //     } else {
+                //         d3.select(eles[i]).attr("fill", nodeColor)
+                //     }
+                // })
             }
         },
 
         /*****  为每个个体中心网络生成局部控制面板  ******/
         generateControls(){
-            var _this = this;
+            var _this = this,
+                index_prop = _this.index_prop;
             var obj = {
                 orderAttr: "cluster",   // 排序选择
                 colorMap: "default",    // 节点颜色映射选择
@@ -863,7 +1000,63 @@ export default {
         },
         changeMapAttr(attr){
             this.mapAttr = attr
-        }
+        },
+        cal_x(node){
+            var timeScale = this.local_timeScale;
+            return timeScale(node.time);
+        },
+        cal_y(node){
+            var orderAttr =this.orderAttr;
+            var y,
+                item_padding = 2,   // 节点之间间距
+                group_padding = 8,  // 子群之间间距
+                r = 3,          // 圆半径或者rect高度的一半
+                height = 273;   // 绘制空间
+
+            if(orderAttr != "cluster"){
+                var scale = d3.scalePoint()
+                             .padding(0.5)
+                             .domain([1,2,3])
+                             .range([height,0])
+
+                var groupIndex = node.data.group.gIndex,
+                    len = node.data.group.len,
+                    index = node.data.group.index;
+                y = scale(groupIndex)-((len-1)/2*(item_padding+r))+(index-1)*(item_padding+2*r);
+            }else{
+
+                var numOfG = node.data.cluster.numOfG,
+                    tIndex = node.data.cluster.tIndex,
+                    len = node.data.cluster.len,
+                    gIndex = node.data.cluster.gIndex;
+
+                var padding_top = (height-len*(2*r+item_padding)+item_padding*numOfG-(numOfG-1)*group_padding)/2;
+                y = padding_top + r+(tIndex-1)*(item_padding+2*r)+(gIndex-1)*group_padding;
+                // if(node.time=="2012")
+                    // console.log(node.data);
+            }
+
+            return y;
+        },
+        getDataByAttr(selection, attrName){
+            return JSON.parse(selection.attr(attrName))
+        },
+        nodeColor(mapAttr,node){
+            var scales = this.nodeAttrScales,
+                values = node.values,
+                prop_index = this.prop_index;
+            if(mapAttr == "default"){
+                var isPreExsit = node.data.isPreExsit;
+                return isPreExsit==1?"lightgrey":(isPreExsit==2?"green":"purple");
+            }else if(mapAttr!="t_venue"){
+                var scale = scales[mapAttr],
+                    value = values[prop_index[mapAttr]];
+                return chroma.scale(['#fee0d2', '#de2d26'])(scale(value));
+            }else{
+                var scale = scales["t_venue"];
+                return scale(values[prop_index[mapAttr]])
+            }
+        },
     },
     components: {
         Node,
@@ -873,13 +1066,26 @@ export default {
 </script>
 
 <style lang="css">
-    .axis--grid .domain {
+    .bottom.axis--grid .domain {
         fill: #ddd;
         stroke: none;
     }
     .axis--grid .tick line {
         stroke: #fff;
     }
+    .top.axis--grid .domain {
+        display:none;
+    }
+    /*.top.axis--grid .tick line{
+        display:none;
+    }*/
+    /*.bottom.axis--grid .tick line{
+        display:none;
+    }
+    .top.axis--grid path{
+        display:none;
+        fill:none;
+    }*/
     .axis-container .node{
         /*fill:#f9be86*/
     }
@@ -987,4 +1193,5 @@ export default {
     text-align: right;
     padding-right:10px;
 }
+
 </style>

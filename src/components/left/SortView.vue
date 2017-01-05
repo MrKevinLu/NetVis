@@ -317,10 +317,10 @@ export default {
 }
 
 .data-col-1{
-    background-color: pink;
+    background-color: #c67823;
 }
 .data-col-2{
-    background-color:lightblue;
+    background-color: #44bc42;
 }
 .legend{
     float:left;
@@ -349,10 +349,10 @@ export default {
     cursor:pointer;
 }
 .color1:after{
-    background-color: pink;
+    background-color: #c67823;
 }
 .color2:after{
-    background-color:lightblue;
+    background-color: #44bc42;
 }
 .color3:after{
     background-color: purple;

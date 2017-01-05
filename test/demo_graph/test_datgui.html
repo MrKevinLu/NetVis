@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
+    <!-- <script src="https://code.highcharts.com/modules/exporting.js"></script> -->
+</head>
+
+<body>
+    <div id="container" style="width:192px; height: 170px; margin: 0 auto"></div>
+    <script>
+        Highcharts.chart('container', {
+
+            chart: {
+                polar: true,
+                type: 'area',
+                margin:5,
+                // marginRight:20,
+                // showAxes: true,            //是否最初显示轴
+                // spacingTop: 15,            //图表上方的空白
+                // spacingRight: 0,
+                // spacingBottom: 0,
+                // spacingLeft: 0,
+                // spacingBottom: 15,
+                // backgroundColor:"yellow"
+            },
+            credits: { enabled:false },
+
+            title: {
+                text: 'Budget vs spending',
+                x: -80,
+                style:{
+                    display:"none"
+                }
+            },
+
+            pane: {
+                size: '80%'
+            },
+
+            xAxis: {
+                categories: ['a', 'b', 'c', 'd',
+                    'e', 'f'
+                ],
+                tickmarkPlacement: 'on',
+                lineWidth: 0
+            },
+
+            yAxis: {
+
+                lineWidth: 0,
+                min: 0,
+                labels:{
+                    style:{
+                        display:"none"
+                    }
+                }
+                // visible:false
+            },
+            legend:{
+                enabled:false
+            },
+            tooltip: {
+                shared: true,
+                pointFormat: '<span style="color:{series.color}">{series.name}: <b>${point.y:,.0f}</b><br/>'
+            },
+
+
+            series: [{
+                name: 'Allocated Budget',
+                data: [43000, 19000, 60000, 35000, 17000, 10000],
+                pointPlacement: 'on'
+            }, {
+                name: 'Actual Spending',
+                data: [50000, 39000, 42000, 31000, 26000, 14000],
+                pointPlacement: 'on'
+            }]
+
+        });
+    </script>
+</body>
+
+</html>

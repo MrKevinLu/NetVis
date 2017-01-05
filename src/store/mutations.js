@@ -25,9 +25,9 @@ export default {
      * @param  {[type]} data  [description]
      * @return {[type]}       [description]
      */
-    [types.CHANGE_LOCAL_T_ARRAY](state,data){
-        state.local_t_array[data.name] = data.range;
-    },
+    // [types.CHANGE_LOCAL_T_ARRAY](state,data){
+    //     state.local_t_array[data.name] = data.range;
+    // },
 
     /**
      * 增加用户

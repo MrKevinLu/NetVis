@@ -16,13 +16,13 @@ const state = {
     attr_data:"",
     node_to_index:"",
     mds:"",
-    currentTime:"2010",
+    currentTime:"2011",
     hasInitial:false,
     clickNode:"",
-    selected:["Kwan-Liu Ma","Daniel A. Keim"], //"Huamin Qu",
+    selected:["Huamin Qu","Daniel A. Keim"], //"Huamin Qu","Kwan-Liu Ma"
     local_t_array: {
-        "Daniel A. Keim":initTimes,
-        "Kwan-Liu Ma":initTimes
+        "Huamin Qu":initTimes,
+        "Daniel A. Keim":initTimes
     },
     index_prop:{
         0:"a_deg",      // 总的节点度，非时变
@@ -185,8 +185,8 @@ const getters = {
 
             }else{
                 var scale = d3.scaleOrdinal()
-                                .domain(Array.from(new Set(values)));
-
+                                .domain(Array.from(new Set(values)))
+                                .range(["red","blue","orange"]);
                 prop_quantile[attr].push(1.5,2.5); // 类别型数据还需处理下
                 scales[attr] = scale;
 

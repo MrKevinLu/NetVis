@@ -47,7 +47,8 @@ export default {
                 g_prop = this.g_prop,
                 scales = {},
                 domains = {},
-                series = [];
+                series = [],
+                colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99'];
             var scale = d3.scaleLinear()
                             .range([0,1]);
 
@@ -67,11 +68,14 @@ export default {
                 var mapData = domains[attr].map(v=>{
                     return scales[attr](v)
                 })
+                var color = d3.color(colors[i]);
+                color.opacity = 0.7;
                 // console.log(mapData);
                 return {
                     name:attr,
                     data:mapData,
-                    scale:scales[attr]
+                    scale:scales[attr],
+                    color:color.toString()
                 }
             })
             // console.log(series);
@@ -89,7 +93,7 @@ export default {
             Highcharts.chart('statistic', {
                 chart: {
                     type: 'area',
-                    backgroundColor: '#969191',
+                    backgroundColor: 'white',
                     // marginTop:0,
                     marginBottom:25,
                     // marginRight:20,

@@ -15,7 +15,7 @@ const yScale = d3.scaleLinear()
                 .range([550,0]);
 
 export default {
-    props:["type","time","searchNode"],
+    props:["type","time","searchNode","comDistribute"],
     data() {
         return {
             context:"",
@@ -26,7 +26,10 @@ export default {
             hoverNode:'',
             colorInterpolation:"",
             nodeColor:'',
-            mousemoveTimeout:''
+            mousemoveTimeout:'',
+            threshold:0.3,
+            kScale: d3.scaleLinear().range([1,0]).domain([0.1,8])
+
         };
     },
     computed: {
@@ -37,18 +40,29 @@ export default {
             return this.$store.state.attr_data;
         },
         nodes:function(){
-            var time = this.time;
+            var time = this.time,
+                attr_data = this.attr_data,
+                nodes;
             if(this.graph!=""){
-                return this.graph[time].nodes.map(n=>{
+                nodes = this.graph[time].nodes.map(n=>{
                     return {
                         name:n.name
                     }
                 })
                 // return this.graph[time].nodes;
             }else{
-                return [];
+                nodes = [];
             }
+
+            var degs = nodes.filter(n=>!n.name.startsWith("group")).map(n=>{
+                // 4为t_deg在数组的序号
+                var deg = attr_data[time][n.name][4];
+                return n.deg = deg;
+            })
+            // console.log(nodes);
+            return nodes;
         },
+
         links:function(){
             var time = this.time;
             if(this.graph!=""){
@@ -60,11 +74,11 @@ export default {
                         venue:l.venue
                     }
                 })
-                // return this.graph[time].links;
             }else{
                 return [];
             }
         },
+
         canvasSize:function(){
             var width = this.canvasDom.width?this.canvasDom.width:550,
                 height = this.canvasDom.width?this.canvasDom.width:550;
@@ -78,15 +92,16 @@ export default {
             var attr_data = this.attr_data,
                 nodes = this.nodes,
                 t = this.time;
-            var degs = nodes.filter(n=>!n.name.startsWith("group")).map(n=>{
-                // 4为t_deg在数组的序号
-                var deg = attr_data[t][n.name][4];
-                return n.deg = deg;
-            })
-            var min_max = d3.extent(degs);
+            var deg_min_max = d3.extent(nodes,n=>n.deg);
+            // var degs = nodes.filter(n=>!n.name.startsWith("group")).map(n=>{
+            //     // 4为t_deg在数组的序号
+            //     var deg = attr_data[t][n.name][4];
+            //     return n.deg = deg;
+            // })
+            // var min_max = d3.extent(degs);
             var scale = d3.scaleLinear()
-                            .domain(min_max)
-                            .range([2,5]);
+                            .domain(deg_min_max)
+                            .range([3,7]);
             return scale;
         }
     },
@@ -104,19 +119,22 @@ export default {
             this.canvasDom = canvas;
             this.initEventHandlers();
         },
-        initCoordinate(){
+        init(){
             var _this = this,
                 width = _this.canvasSize.width,
                 height = _this.canvasSize.height,
                 nodes = _this.nodes,
                 links = _this.links,
-                canvas = document.getElementById("fda");
+                canvas = document.getElementById("fda"),
+                threshold = _this.threshold,
+                rScale = _this.rScale;
 
             // 给每个节点打社区标签
             _this.detectCommunity()
 
-            //给每个社区添加社区中心
-            _this.addCommunityCentric();
+            // 添加虚拟边，计算节点模糊度
+            _this.initNL();
+
             // 设置节点颜色函数
             _this.nodeColor = (groupIndex)=>{
                 return d3.interpolateRainbow(_this.colorInterpolation(groupIndex));
@@ -124,31 +142,46 @@ export default {
 
             // 缩放行为
             var zoom = d3.zoom().scaleExtent([0.1, 8]).on("zoom", _this.zoom);
-            d3.select(canvas).call(zoom).call(zoom.scaleTo,0.1);
+            d3.select(canvas).call(zoom);
+            //.call(zoom.scaleTo,0.1);
 
-            // 设置力
+
             var simulation = d3.forceSimulation()
-                .force("link", d3.forceLink().id(function(d) {
-                    return d.name;
-                }).distance(function(l){
-                    return (l.source.community == l.target.community)?10:70
+                .force("innerLink",d3.forceLinkInCommunity().threshold(threshold).id(function(d){return d.id||d.name;}).distance(function(d){
+                    return 1;
                 }))
-                .force("charge", d3.forceManyBody().strength(function(d){
-                    return -20;
+                .force("innerCollide",d3.forceCollide().radius(function(d){
+                    return rScale(d.deg);
                 }))
-                .force("center", d3.forceCenter(width / 2, height / 2));
+                .force("innerCharge",d3.forceRepInCommunity().threshold(threshold).strength(function(){return -10}))
+                .force("outterLink",d3.forceLinkBetCommunity().threshold(threshold).id(function(d){return d.gIndex;}).distance(function(l,i,links){
+                    var extent = d3.extent(links,link=>link.weight);
+                    var scale = d3.scaleLinear().domain(extent).range([100,60]);
+                    return scale(l.weight);
+                }))
+                .force("outterCharge",d3.forceRepBetCommunity().threshold(threshold).strength(function(n,i,nodes){
+                    var extent = d3.extent(nodes,d=>d.children.length);
+                    var scale = d3.scaleLinear().domain(extent).range([-100,-400])
+                    return scale(n.children.length)
+                }))
 
-            simulation
-                .nodes(nodes)
-                .on("tick", ticked)
-                .on("end",function(){
-                    // console.log(_this.links);
-                });
+                .force("fuzzyLink",d3.forceLinkFuzzy().threshold(threshold).id(d=>d.gIndex).distance(l=>1/l.weight))
+                .force("center",d3.forceCenter(width/2,height/2));
 
-            simulation.force("link")
-                .links(links);
+            simulation.nodes(nodes)
+                      .on("tick",ticked);
+
+            simulation.force("innerLink")
+                     .links(links);
+            simulation.force("outterLink")
+                     .links(links);
+            simulation.force("fuzzyLink")
+                    .links(links);
+            // console.log(nodes);
+
 
             function ticked(){
+
                 _this.draw();
             }
 
@@ -160,6 +193,7 @@ export default {
         },
 
         draw(){
+
             this.clearCanvas();
             this.drawBackground();
             this.drawShadows();
@@ -182,48 +216,101 @@ export default {
             ctx.fillRect(0,0,width,height);
         },
         drawShadows(){
-            var ctx = this.context;
+            var shadowData = this.getShawdowData();
+            var ctx = this.context,
+                color = this.nodeColor,
+                kScale = this.kScale,
+                currentK = this.k;
+
+            for(let shadow of shadowData){
+                ctx.beginPath()
+                var {x0,y0,r,gIndex} = shadow;
+                // context.fillStyle = "rgba(119, 113, 113,0.5)"
+                var grad  = ctx.createRadialGradient(x0,y0,r*0.5,x0,y0,r)
+                var c = d3.color(color(+gIndex));
+                c.opacity = kScale(currentK);
+                grad.addColorStop(0,`rgba(0,0,0,${kScale(currentK)})`)
+                grad.addColorStop(1,c)
+                ctx.fillStyle = grad;
+                ctx.arc(x0, y0, r, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            // ctx.beginPath()
         },
         drawNodes(){
             var nodes = this.nodes,
                 ctx = this.context,
-                xScale = this.newScaleX,
-                yScale = this.newScaleY,
+                newScaleX = this.newScaleX,
+                newScaleY = this.newScaleY,
                 rScale = this.rScale,
                 color = this.nodeColor,
-                searchNode = this.searchNode;
+                searchNode = this.searchNode,
+                threshold = this.threshold;
 
+            // for(let [i,n] of nodes.entries()){
+            //     if(n.name.startsWith("group")) continue;
+            //     ctx.beginPath();
+            //     ctx.fillStyle = color(n.community)
+            //     var r = (n.hoveron==true || searchNode==n.name)?rScale(n.deg)*1.5:rScale(n.deg);
+            //     // if(n.hoveron || this.searchNode==n.name ){
+            //     //     r = rScale(n.deg);
+            //     // }else{
+            //     //     r = rScale(n.deg);
+            //     // }
+            //     ctx.arc(newScaleX(n.x), newScaleY(n.y), r, 0, 2 * Math.PI);
+            //     ctx.fill();
+            //     if(n.hoveron || searchNode==n.name){
+            //         ctx.lineWidth = 2;
+            //         ctx.strokeStyle = "white";
+            //         ctx.stroke();
+            //     }
+            // }
 
             for(let [i,n] of nodes.entries()){
-                if(n.name.startsWith("group")) continue;
                 ctx.beginPath();
-                ctx.fillStyle = color(n.community)
-                var r = (n.hoveron==true || searchNode==n.name)?rScale(n.deg)*1.5:rScale(n.deg);
-                // if(n.hoveron || this.searchNode==n.name ){
-                //     r = rScale(n.deg);
-                // }else{
-                //     r = rScale(n.deg);
-                // }
-                ctx.arc(xScale(n.x), yScale(n.y), r, 0, 2 * Math.PI);
-                ctx.fill();
-                if(n.hoveron || searchNode==n.name){
+                var cx = newScaleX(n.x)||0,
+                    cy = newScaleY(n.y)||0,
+                    r = rScale(n.deg);
+
+                var grad  = ctx.createRadialGradient(cx,cy,0,cx,cy,r)
+                grad.addColorStop(0,"white")
+                grad.addColorStop(1,color(n.community))
+
+                // 模糊度大于阈值的用特定的颜色表示
+                // context.fillStyle = grad
+                ctx.fillStyle = n.fuzzy>threshold?grad:grad;
+                ctx.lineWidth = 0;
+                if(n.fuzzy>threshold){
                     ctx.lineWidth = 2;
                     ctx.strokeStyle = "white";
-                    ctx.stroke();
+                }
+
+
+                if(n.hoveron == true || n.name == searchNode){
+                    r = r*1.5;
+                }
+                ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+                ctx.fill();
+                if(n.hoveron == true || n.name == searchNode){
+                    // r = r*1.5;
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = "white"
+                    ctx.stroke()
                 }
             }
+
         },
         drawLinks(){
             var links = this.links,
                 ctx = this.context,
-                xScale = this.newScaleX,
-                yScale = this.newScaleY,
+                newScaleX = this.newScaleX,
+                newScaleY = this.newScaleY,
                 hoverNode = this.hoverNode,
                 searchNode = this.searchNode;
             for(let l of links){
-                if(l.source.name.startsWith("group") || l.target.name.startsWith("group")) continue;
+                if(l.virtual==true) continue;
                 ctx.beginPath()
-                ctx.lineWidth = 1;
+                ctx.lineWidth = l.weight || l.value;
                 ctx.strokeStyle = 'rgba(255, 170, 0, 0.4)'
                 if(hoverNode!='' || searchNode==l.source.name || searchNode == l.target.name){
                     if(l.source.name == hoverNode.name || l.target.name==hoverNode.name || l.source.name == searchNode || l.target.name == searchNode){
@@ -233,10 +320,33 @@ export default {
                         ctx.strokeStyle = 'rgba(201, 199, 199,0.1)'
                     }
                 }
-                ctx.moveTo(xScale(l.source.x),yScale(l.source.y));
-                ctx.lineTo(xScale(l.target.x),yScale(l.target.y))
+                ctx.moveTo(newScaleX(l.source.x),newScaleY(l.source.y));
+                ctx.lineTo(newScaleX(l.target.x),newScaleY(l.target.y))
                 ctx.stroke();
             }
+
+            // for(let l of links){
+            //     if(l.virtual==true) continue;
+            //     var source = l.source,
+            //         target = l.target;
+            //     if(source.hoveron == true || target.hoveron == true || searchNode==source.name || searchNode==target.name){
+            //         ctx.beginPath();
+            //         ctx.strokeStyle = 'rgba(255, 131, 0,0.8)';
+            //         ctx.lineWidth = Math.sqrt(l.value||l.weight)*2;
+            //
+            //         ctx.moveTo(newScaleX(source.x),newScaleY(source.y))
+            //         ctx.lineTo(newScaleX(target.x),newScaleY(target.y));
+            //         ctx.stroke();
+            //     }else{
+            //         ctx.beginPath();
+            //         ctx.strokeStyle = 'rgba(201, 199, 199,0.5)';
+            //         ctx.lineWidth = Math.sqrt(l.value||l.weight)*2;
+            //
+            //         ctx.moveTo(newScaleX(source.x),newScaleY(source.y))
+            //         ctx.lineTo(newScaleX(target.x),newScaleY(target.y));
+            //         ctx.stroke();
+            //     }
+            // }
         },
         drawTooltips(){
             var ctx = this.context,
@@ -285,43 +395,13 @@ export default {
                 d.community = community_assignment_result[i];
                 max_community_number = max_community_number < community_assignment_result[i] ? community_assignment_result[i] : max_community_number;
             })
+            // console.log(community_assignment_result);
             // console.log(max_community_number);
             this.colorInterpolation = d3.scaleLinear()
                             .domain([0,max_community_number])
                             .range([0,1])
         },
-        addCommunityCentric(){
-            var nodes = this.nodes,
-                links = this.links;
-            var nodeByGroup = d3.nest().key((d)=>d.community).map(nodes);
-            for(let [i,n] of nodes.entries()){
-                var groupName = "group"+n.community,
-                    weight = nodeByGroup.get(n.community+"").length;
-                if(weight<=1) continue;
-                links.push({
-                    source:groupName,
-                    target:n.name,
-                    weight
-                })
-            }
-            for(let k of nodeByGroup.keys()){
-                if(nodeByGroup.get(k).length<=1) continue;
-                nodes.push({
-                    name:"group"+k,
-                    community:+k,
-                    deg:nodeByGroup.get(k).length
-                })
-            }
 
-            // 改变links
-            var nodeByName = d3.map(nodes,(n)=>n.name);
-            for(let l of links){
-                // console.log(nodeByName.get(l.source),nodeByName.get(l.target));
-                l.source = nodeByName.get(l.source);
-                l.target = nodeByName.get(l.target);
-            }
-
-        },
 
         mousemoveHandler(){
             clearTimeout(this.mousemoveTimeout)
@@ -352,7 +432,6 @@ export default {
                 };
                 _this.draw();
             },100)
-
         },
 
         /*****    选择个体中心     ******/
@@ -378,23 +457,133 @@ export default {
                 this.addIndividual(selectedNode.name)
                 console.log(selectedNode.name);
             }
-        }
+        },
+        getShawdowData(){
+            var nodes = this.nodes,
+                newScaleX = this.newScaleX,
+                newScaleY = this.newScaleY,
+                threshold = this.threshold;
 
+            var groups = d3.nest().key(n=>n.community).map(nodes.filter(n=>n.fuzzy<=threshold));
+            var gIndexs = groups.keys();
+
+            var shadowData = gIndexs.map(g=>{
+                var nodes = groups.get(g);
+                var x0 = d3.mean(nodes,n=>newScaleX(n.x)),
+                    y0 = d3.mean(nodes,n=>newScaleY(n.y));
+                var xExtent = d3.extent(nodes,n=>newScaleX(n.x)),
+                    yExtent = d3.extent(nodes,n=>newScaleY(n.y));
+                var r1 = (xExtent[1]-xExtent[0])/2,
+                    r2 = (yExtent[1]-yExtent[0])/2,
+                    r = r1>=r2?r1*1.2:r2*1.2;
+                return {
+                    x0,
+                    y0,
+                    r,
+                    gIndex:g
+                }
+            })
+            return shadowData;
+        },
+
+        // 添加虚拟边和计算节点模糊度
+        initNL(){
+            var nodes = this.nodes,
+                links = this.links,
+                threshold = this.threshold;
+
+            var nodeById = d3.map(nodes,function(d){return d.name});
+
+            var metaNodes=[],metaLinks=[];
+            var adjList = {};
+            var groups = {
+
+            };
+
+            // 构建邻接表
+            links.forEach(l=>{
+                var {source,target} = l;
+                if(adjList[source]==undefined){
+                    adjList[source]={}
+                }
+                adjList[source][target]=1
+            })
+
+
+            // 标记桥梁节点
+            for(let l of links){
+                var source = nodeById.get(l.source),
+                    target = nodeById.get(l.target);
+                var c1 = source.community,
+                    c2 = target.community;
+                if(c1==c2) continue;
+                else{
+                    source.bridge?source.bridge++:source.bridge=1;
+                    target.bridge?target.bridge++:target.bridge=1;
+                }
+            }
+
+            //计算模糊度
+            for(let n of nodes){
+                n.fuzzy = compute_fuzzy(n);
+            }
+
+            // 构建元节点
+            nodes.forEach(n=>{
+                if(groups[n.community]==undefined) groups[n.community]=[]
+                groups[n.community].push(n);
+            })
+
+            // 添加虚拟边
+            Object.keys(groups).forEach(gIndex=>{
+                var nodes = groups[gIndex];
+                for(let [i,n] of nodes.entries()){
+                    if(n.fuzzy>threshold) continue;
+                    for(let [j,m] of nodes.entries()){
+                        if(n.fuzzy>threshold) continue;
+                        var id1 = n.id||n.name,
+                            id2 = m.id||m.name;
+                        if(i<j){
+                            if(!isInLinks(id1,id2)){
+                                // console.log(true);
+                                links.push({
+                                    source:id1,
+                                    target:id2,
+                                    weight:1,
+                                    virtual:true
+                                })
+                            }
+                        }
+                    }
+                }
+            })
+            // console.log(links.length);
+
+            function isInLinks(id1,id2){
+                return (adjList[id1]&&adjList[id1][id2])||(adjList[id2]&&adjList[id2][id1])?true:false;
+            }
+            // 模糊度计算
+            function compute_fuzzy(n){
+                if(n.bridge) return n.bridge/(n.deg);
+                else return 0;
+            }
+
+        }
     },
+
     watch:{
         graph:function(){
-            this.initCoordinate()
-            this.draw()
+            this.init();
+            // this.draw()
         },
         time:function(){
-            this.initCoordinate();
-            this.draw();
-        },
-        nodes:function(){
-            console.log("nodes changed");
+            this.init();
+            // this.draw();
         }
-    },
-    components: {}
+        // nodes:function(){
+        //     console.log("nodes changed");
+        // }
+    }
 };
 </script>
 

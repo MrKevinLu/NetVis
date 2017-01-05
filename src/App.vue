@@ -2,6 +2,9 @@
     <div class="container">
         <net-head></net-head>
         <net-body></net-body>
+        <!-- <div id="tmp_stat">
+
+        </div> -->
     </div>
 </template>
 
@@ -33,5 +36,12 @@ export default {
         width:1400px;
         height:800px;
         margin:0 auto;
+    }
+    #tmp_stat{
+        position: absolute;
+        top:800px;
+        left:100px;
+        width:400px;
+        height:400px;
     }
 </style>

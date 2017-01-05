@@ -1,7 +1,7 @@
 <template lang="html">
     <div id="g_network_view">
-        <net-FDA :type="type" :time="currentTime" :searchNode="searchNode"></net-FDA>
-        <net-MDS :type="type" :time="currentTime" :searchNode="searchNode"></net-MDS>
+        <net-FDA :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode"></net-FDA>
+        <net-MDS :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode" :mapAttr="mapAttr"></net-MDS>
         <div class="arrow arrow-left" @click="preTime">
         </div>
         <div class="arrow arrow-right" @click="nextTime">
@@ -30,13 +30,16 @@ export default {
             community: null,
             communityResult: {},
             type:"FDA",
-            searchNode:''
+            searchNode:'',
+            dis_type:"radar",
+            mapAttr:"t_deg"
         };
     },
 
     computed: {
         ...mapGetters([
-            'times'
+            'times',
+            'prop_index'
         ]),
         currentTime:function(){
             return this.$store.state.currentTime;
@@ -69,8 +72,11 @@ export default {
         ]),
         generateControls(){
             var _this = this;
+            var attrs = Object.keys(_this.prop_index);
             var obj = {
-                layout:_this.type
+                layout:_this.type,
+                dis_type:_this.dis_type,
+                mapAttr:"t_deg"
             }
             // var attrList = Object.keys(index_prop).map(d=>{return index_prop[d]});
             var gui = new dat.GUI({autoPlace: false});
@@ -78,10 +84,19 @@ export default {
             var customContainer = d3.select('#g_network_view').node();
             customContainer.appendChild(gui.domElement);
             gui.add(obj,"layout",['MDS','FDA']).onChange(_this.toggleView);
+            gui.add(obj,"dis_type",['radar','histogram']).onChange(_this.toggleDistributionView);
+            gui.add(obj,"mapAttr",attrs).onChange(_this.changeMDS_mapAttr);
+
             gui.close();
         },
         toggleView(type){
             this.type = type;
+        },
+        toggleDistributionView(value){
+            this.dis_type = value;
+        },
+        changeMDS_mapAttr(value){
+            this.mapAttr = value;
         },
         preTime(){
             var time = this.currentTime,

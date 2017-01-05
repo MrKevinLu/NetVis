@@ -1363,6 +1363,12 @@ ecc-jsbn@~0.1.1:
   dependencies:
     jsbn "~0.1.0"
 
+echarts:
+  version "3.3.2"
+  resolved "http://registry.npm.taobao.org/echarts/download/echarts-3.3.2.tgz#06f42a47d213248d45fe585719ec8940fdc610aa"
+  dependencies:
+    zrender "^3.2.1"
+
 editorconfig@^0.13.2:
   version "0.13.2"
   resolved "http://registry.npm.taobao.org/editorconfig/download/editorconfig-0.13.2.tgz#8e57926d9ee69ab6cb999f027c2171467acceb35"
@@ -1721,6 +1727,10 @@ he@^1.1.0:
 highcharts:
   version v5.0.4
   resolved "http://registry.npm.taobao.org/highcharts/download/highcharts-5.0.4.tgz#ef598f7a2fc66f6285b9457b6cf92ada179e5deb"
+
+highcharts-more:
+  version "0.1.2"
+  resolved "http://registry.npm.taobao.org/highcharts-more/download/highcharts-more-0.1.2.tgz#38c2e386569ec79c8bd97fd68b384c5ea512efac"
 
 hoek@2.x.x:
   version "2.16.3"
@@ -3353,4 +3363,8 @@ yargs@~3.10.0:
     cliui "^2.1.0"
     decamelize "^1.0.0"
     window-size "0.1.0"
+
+zrender@^3.2.1:
+  version "3.2.2"
+  resolved "http://registry.npm.taobao.org/zrender/download/zrender-3.2.2.tgz#b33d250456859944a48c4f3550986168a0952ec5"
 

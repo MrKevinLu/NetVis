@@ -27,9 +27,9 @@ export const getAllData = ({commit}) => {
  * @param  {[type]} data     [description]
  * @return {[type]}          [description]
  */
-export const changeLocalTArray = ({commit},data)=>{
-    commit(types.CHANGE_LOCAL_T_ARRAY, data)
-}
+// export const changeLocalTArray = ({commit},data)=>{
+//     commit(types.CHANGE_LOCAL_T_ARRAY, data)
+// }
 
 /**
  * 增加个体中心网络

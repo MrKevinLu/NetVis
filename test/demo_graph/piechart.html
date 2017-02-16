@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- <canvas width="960" height="500"></canvas> -->
+<svg width="960" height="500"></svg>
+<script src="https://d3js.org/d3.v4.0.0-alpha.4.min.js"></script>
+<script>
+
+var svg = d3.select("svg");
+    // context = canvas.getContext("2d");
+
+var width = +d3.select("svg").attr("width"),
+    height = +d3.select("svg").attr("height"),
+    radius = Math.min(width, height) / 2;
+
+var colors = ["#bf812d", "#dfc27d", "#f6e8c3", "#a05d56", "#d0743c", "#ff8c00"];
+var colors2 = ["#35978f","#c7eae5"];
+
+var data = [2,3,2];
+var data2 = [1,2];
+var arc = d3.arc()
+    .outerRadius(16)
+    .innerRadius(0);
+
+var arc2 = d3.arc()
+    .outerRadius(22)
+    .innerRadius(16);
+
+var svg = svg.append("g")
+    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+var labelArc = d3.arc()
+    .outerRadius(radius - 40)
+    .innerRadius(radius - 40);
+
+var pie = d3.pie()
+    .sort(null)
+    .value(function(d) { return d; });
+
+var g1 = svg.selectAll(".arc")
+    .data(pie(data))
+    .enter()
+    .append("g")
+    .attr("class","arc");
+
+g1.append("path")
+    .attr("d",arc)
+    .style("fill",function(d,i){
+        return colors[i];
+    })
+
+var g2 = svg.selectAll(".arc2")
+    .data(pie(data2))
+    .enter()
+    .append("g")
+    .attr("class","arc2");
+
+g2.append("path")
+    .attr("d",arc2)
+    .style("fill",function(d,i){
+        return colors2[i];
+    });
+
+
+//   var arcs = pie(data);
+// console.log(arcs);
+//   arcs.forEach(function(d, i) {
+//     context.beginPath();
+//     console.log(d);
+//     arc(d);
+//     context.fillStyle = colors[i];
+//     context.fill();
+//   });
+//
+//   context.beginPath();
+//   arcs.forEach(arc);
+  // context.strokeStyle = "#fff";
+  // context.stroke();
+  //
+  // context.textAlign = "center";
+  // context.textBaseline = "middle";
+  // context.fillStyle = "#000";
+  // arcs.forEach(function(d) {
+  //   var c = labelArc.centroid(d);
+  //   context.fillText(d.data.age, c[0], c[1]);
+  // });
+
+
+</script>

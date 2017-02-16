@@ -1,8 +1,8 @@
 <template lang="html">
-    <transition name="fade">
+    <!-- <transition name="fade"> -->
         <circle class="i_item" :cx="cal_x(node)" :data-item="JSON.stringify(node)" :cy="cal_y(node)" r="3" :fill="color(mapAttr,node)" @mouseover="mouseOverHandler" @mouseout="mouseoutHandle"></circle>
         <!-- <rect :x= "local_timeScale(node.time)-10/2" :y="gen_y()-6/2" fill="green" width=10 height=6></rect> -->
-    </transition>
+    <!-- </transition> -->
 </template>
 
 <script>

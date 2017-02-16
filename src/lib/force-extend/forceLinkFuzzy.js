@@ -35,6 +35,7 @@ export default function(links) {
         metaNodes,
         metaLinks = [],
         cc = 0,
+        tempCount = 0,
         threshold = 1,
         flag = false;
 
@@ -78,8 +79,9 @@ export default function(links) {
             }
             // console.log(metaNodes);
             for (var k = 0, n = metaLinks.length; k < iterations; ++k) {
+                var tempObj = {};
                 for (var i = 0, link, source, target, x, y, l, b; i < n; ++i) {
-                    cc++;
+
 
                     link = metaLinks[i], source = link.source, target = link.target;
                     x = target.x + target.vx - source.x - source.vx || jiggle();
@@ -93,21 +95,36 @@ export default function(links) {
                         sNodes = source.children;
                     b = bias[i];
                     if (target.type == "fuzzyNode") {
+                        if(cc==0){
+                            tempObj[target.gIndex]=1;
+                        }
                         for (let j = 0; j < tNodes.length; j++) {
+
+                            // if(cc==0)
+                                // tempCount++;
                             var nn = tNodes[j];
                             nn.vx -= x * b;
-                            nn.vy -= y * b
+                            nn.vy -= y * b;
+
+
                         }
                     }
                     if (source.type == "fuzzyNode") {
+                        if(cc==0){
+                            tempObj[source.gIndex]=1;
+                        }
                         for (let j = 0; j < sNodes.length; j++) {
+                            // if(cc==0)
+                            //     tempCount++;
                             var nn = sNodes[j];
                             nn.vx += x * (1 - b);
                             nn.vy += y * (1 - b)
                         }
                     }
-
                 }
+                cc++;
+                if(cc==1)
+                    console.log(Object.keys(tempObj).length);
             }
         }
 
@@ -226,7 +243,7 @@ export default function(links) {
                 type: "coreNode"
             }
         });
-
+        console.log(fuzzyNodes.length);
         for (let fn of fuzzyNodes) {
             var i = d3.max(metaNodes, n => n.index);
             metaNodes.push({
@@ -240,10 +257,12 @@ export default function(links) {
         // console.log(metaNodes);
     }
 
+    // 有问题！
     function getMetaLinks() {
         //构建元边
         var nodeById = map(nodes, d => d.id || d.name);
         var tmp_metaLinks = [];
+        var metaLinkIndex = 1; // 标记每一条元边，id
         for (let l of links) {
             if (l.virtual) continue;
             var source = typeof l.source !== "object" ? find(nodeById, l.source) : l.source,
@@ -262,23 +281,45 @@ export default function(links) {
                 c2 = source.community + "unfuzzy";
                 w = l.weight || l.value;
             }
+            if (source.fuzzy>threshold && target.fuzzy>threshold){
+                c1 = (source.id || source.name) + source.community + "fuzzy";
+                c2 = (target.id || target.name) + target.community + "fuzzy";
+                w = l.weight || l.value;
+            }
             if (c1 == undefined || c2 == undefined) continue;
-            // var c1 = source.community+(source.fuzzy>threshold?"fuzzy":"unfuzzy"),
-            //     c2 = target.community+(target.fuzzy>threshold?"fuzzy":"unfuzzy"),
-            //     w = l.weight||l.value;
 
-            // if(c1==c2 || source.fuzzy>threshold ||target.fuzzy>threshold){
-            //     continue;
-            // };
-
-            if ((source.fuzzy > threshold && target.fuzzy <= threshold) || (target.fuzzy > threshold && source.fuzzy <= threshold)) {
+            // if(c1.endsWith("fuzzy") && c2.endsWith("fuzzy")){
+            //     for (let ml of tmp_metaLinks) {
+            //         var metaS = ml.source,
+            //             metaT = ml.target;
+            //         // 若存在元边，更新权重
+            //         if ((metaS == c1 && metaT == c2) || (metaS == c2 && metaT == c1)) {
+            //             flag = true;
+            //             ml.weight += w; // 边权重累计
+            //             ml.bridge++;    // 边数量
+            //             break;
+            //         }
+            //     }
+            //     //若不存在，添加一条新的元边
+            //     if (!flag) {
+            //         tmp_metaLinks.push({
+            //             source: c1,
+            //             target: c2,
+            //             weight: w,
+            //             bridge: 1,
+            //             tag: c1
+            //         })
+            //     }
+            // }
+            // if ((source.fuzzy > threshold && target.fuzzy <= threshold) || (target.fuzzy > threshold && source.fuzzy <= threshold)) {
                 for (let ml of tmp_metaLinks) {
                     var metaS = ml.source,
                         metaT = ml.target;
                     // 若存在元边，更新权重
                     if ((metaS == c1 && metaT == c2) || (metaS == c2 && metaT == c1)) {
                         flag = true;
-                        ml.weight += w;
+                        ml.weight += w; // 边权重累计
+                        ml.bridge++;    // 边数量
                         break;
                     }
                 }
@@ -288,16 +329,18 @@ export default function(links) {
                         source: c1,
                         target: c2,
                         weight: w,
+                        bridge: 1,
                         tag: c1
                     })
                 }
-            }
+            // }
         }
+        // 每一个fuzzy元节点（桥梁节点）只取两个跟它链接最密切的社团
         var metaLinksByTag = d3.nest().key(d => d.tag).map(tmp_metaLinks),
             tags = metaLinksByTag.keys();
         for (let k of tags) {
-            var groups = metaLinksByTag.get(k).sort((a, b) => b.weight - a.weight).slice(0, 2);
-            metaLinks.push(...groups)
+            var needMetaLinks = metaLinksByTag.get(k).sort((a, b) => b.weight - a.weight).slice(0, 2);
+            metaLinks.push(...needMetaLinks)
         }
 
         // console.log(metaLinks);

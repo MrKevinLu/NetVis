@@ -1,6 +1,6 @@
 <template lang="html">
     <div class="individual" :class="{[classed]:true}">
-        <div class="tooltip">
+        <!-- <div class="tooltip">
 
         </div>
         <div class="foldPanel">
@@ -17,14 +17,15 @@
                         </g>
                         <g class="nodesBrush"></g>
                         <g class="path-group">
-                            <edge v-for="(l,index) in links" :key="index" :path_group="l" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></edge>
+                            <edge v-for="(l,index) in links" v-bind:key="index" :path_group="l" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></edge>
                         </g>
                         <g class="node-group">
                             <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></node>
                         </g>
+                        <g class="sankey"></g>
                     </g>
             </svg>
-        </div>
+        </div> -->
 
     </div>
 </template>
@@ -73,7 +74,8 @@ export default {
                 right: 10,
                 bottom: 10
             },
-            selectNodes:[]
+            selectNodes:[],
+            isShownOfCom:false //group
         };
     },
     computed: {
@@ -298,6 +300,8 @@ export default {
         d3.select("."+c).select(".wrap-g .nodesBrush").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight-5) + ")");
         d3.select("."+c).select(".wrap-g .node-group").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight-5) + ")");
         d3.select("."+c).select(".wrap-g .path-group").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight-5) + ")");
+        d3.select("."+c).select(".wrap-g .sankey").attr("transform", "translate(0," + (_this.margin.top + _this.axisHeight-5) + ")");
+
         if(_this.hasInitial){
             _this.is_axis_drawed = true;
             _this.drawAxis();
@@ -779,11 +783,131 @@ export default {
                 this.sortByAttr(orderAttr);
             }
             var endTime = new Date();
-            console.log("sort takes:",(endTime-startTime)/1000);
-
+            // console.log("sort takes:",(endTime-startTime)/1000);
+            this.generateSankeyData();
         },
 
+        generateSankeyData(){
+            var startTime = new Date();
+            var nodes = this.nodes,
+                links = this.links,
+                orderAttr = this.orderAttr,
+                mapNodesByTime,
+                metaNodes = [],
+                metaLinks = [];
 
+            if(orderAttr=="cluster")
+                mapNodesByTime = d3.nest().key(n=>n.time).key(n=>n.data.cluster.gIndex).map(nodes);
+            else {
+                mapNodesByTime = d3.nest().key(n=>n.time).key(n=>n.data.group.gIndex).map(nodes);
+            };
+            var times = mapNodesByTime.keys().sort((a,b)=>a-b),
+                len = times.length;
+
+            // 初始化元节点
+            for(let [i,t] of times.entries()){
+                var groupKeys = mapNodesByTime.get(times[i]).keys().sort((a,b)=>a-b);
+                var start = 1;
+                var numOfNodes = d3.nest().key(n=>n.time).map(nodes).get(t).length;
+                for(let k of groupKeys){
+                    var id = t+""+k;
+                    var tmp_nodes = mapNodesByTime.get(times[i]).get(k);
+                    metaNodes.push({
+                        id,
+                        data:tmp_nodes,
+                        t:t,
+                        startNIndex:start,
+                        local_len:tmp_nodes.length,
+                        total_len:numOfNodes,
+                        numOfGroup:groupKeys.length,
+                        gIndex:+k
+                    });
+                    start+=tmp_nodes.length;
+                }
+            }
+            // console.log(metaNodes);
+            // 存储每一个社团中的边的起始点
+            var s_start = {},
+                t_start = {};
+
+            // console.log(metaNodes);
+            for(let [i,t] of times.entries()){
+                var curTime = times[i],
+                    nextTime = times[i+1];
+                if(i<len-1){
+                    if(nextTime-curTime!=1) continue;
+                    var curGroups = mapNodesByTime.get(times[i]),
+                        nextGroups = mapNodesByTime.get(times[i+1]),
+                        curKeys = curGroups.keys().sort((a,b)=>a-b),
+                        nextKeys = nextGroups.keys().sort((a,b)=>a-b);
+
+
+                    for(let k1 of curKeys){
+                        s_start[curTime+""+k1] = 1;
+                    }
+                    for(let k2 of nextKeys){
+                        t_start[nextTime+""+k2] = 1;
+                    }
+                    /*******************/
+                    for(let k1 of curKeys){
+                        var nodes1 = curGroups.get(k1);
+                        for(let k2 of nextKeys){
+                            var nodes2 = nextGroups.get(k2);
+                            var id1 = curTime+""+k1,
+                                id2 = nextTime+""+k2;
+                            for(let n1 of nodes1){
+                                for(let n2 of nodes2){
+                                    if(n1.data.name == n2.data.name){
+                                        if(!this.isExistInMetaLinks(id1, id2, metaLinks)){
+                                            metaLinks.push({
+                                                source:id1,
+                                                target:id2,
+                                                weight:1
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            for(let l of metaLinks){
+                var {source,target,weight} = l;
+                l.sStart = s_start[source];
+                l.tStart = t_start[target];
+                s_start[source]+=weight;
+                t_start[target]+=weight;
+            }
+            for(let l of metaLinks){
+                var source = l.source,
+                    target = l.target;
+                for(let n of metaNodes){
+                    if(n.id == source) l.source = n;
+                    if(n.id == target) l.target = n;
+                }
+            }
+            var endTime = new Date();
+
+            return {
+                metaNodes,
+                metaLinks
+            }
+            // console.log("sankey takes:",(endTime-startTime)/1000);
+            // console.log(metaLinks);
+        },
+        isExistInMetaLinks(source,target,metaLinks){
+            var flag = false;
+            for(let l of metaLinks){
+                if(source==l.source && target==l.target){
+                    flag = true;
+                    l.weight++;
+                    break;
+                }
+            }
+            return flag;
+        },
         /******** 绘制头部坐标轴  **********/
         drawAxis() {
             var _this = this;
@@ -803,7 +927,6 @@ export default {
                 {scales,ego_values_seq} = this.egoAxisScales_seq,
                 axisScaleTop = timeScale.copy(),
                 axisScaleBottom = timeScale.copy();
-
             // console.log(ego_values_seq);
 
 
@@ -953,9 +1076,12 @@ export default {
                     nodeUpdate.exit().remove();
 
                     /**************************************/
-
                     local_t_array.splice(0);
                     local_t_array.push(...current_t_range);
+                    if(_this.isShownOfCom){
+                        // console.log("++++++++");
+                        // _this.drawCommunity(_this.isShownOfCom);
+                    }
                 }
 
             }
@@ -980,8 +1106,10 @@ export default {
             var obj = {
                 orderAttr: "cluster",   // 排序选择
                 colorMap: "default",    // 节点颜色映射选择
+                displayCom:false,
                 startColor: [128,128,128],
-                endColor: [90,90,90]
+                endColor: [90,90,90],
+
             }
             var attrList = Object.keys(index_prop).map(d=>{return index_prop[d]});
             // console.log(attrList);
@@ -991,9 +1119,99 @@ export default {
             customContainer.appendChild(gui.domElement);
             gui.add(obj,"orderAttr",['cluster',...attrList]).onChange(_this.changeOrderAttr);
             gui.add(obj,"colorMap",["default",...attrList]).onChange(_this.changeMapAttr);
-            gui.addColor(obj,"startColor");
-            gui.addColor(obj,"endColor");
+            gui.add(obj,"displayCom").onChange(_this.drawCommunity);
+            // gui.addColor(obj,"startColor");
+            // gui.addColor(obj,"endColor");
             gui.close();
+        },
+
+        drawCommunity(flag){
+            console.log(flag);
+            this.isShownOfCom = flag;
+            var c = this.classed;
+
+            if(flag){
+                var {metaNodes, metaLinks} = this.generateSankeyData(),
+                    timeScale = this.local_timeScale,
+                    cal_sankey_node_y = this.cal_sankey_node_y,
+                    get_sankey_path = this.get_sankey_path,
+                    orderAttr = this.orderAttr;
+
+                var g_path = d3.select("."+c).select(".sankey").append("g").attr("class","sankey_path"),
+                    g_nodes = d3.select("."+c).select(".sankey").append("g").attr("class","sankey_nodes");
+
+                g_path.selectAll(".s_path")
+                       .data(metaLinks)
+                       .enter()
+                       .append("path")
+                       .attr("class","s_path")
+                       .attr("d",function(d){
+                           return get_sankey_path(orderAttr, d);
+                       })
+                       .style("stroke","lightgrey")
+                       .style("stroke-width",function(d){
+                           return d.weight*6;
+                       })
+                       .style("fill","none")
+                       .style("opacity",0.5);
+
+                g_nodes.selectAll(".s_node")
+                        .data(metaNodes)
+                        .enter()
+                        .append("rect")
+                        .attr("class","s_node")
+                        .attr("x",function(d){
+                            return timeScale(d.t)-3;
+                        })
+                        .attr("y",function(d){
+                            return cal_sankey_node_y(orderAttr,d);
+                        })
+                        .attr("width",6)
+                        .attr("height",function(d){
+                            return d.local_len*(2*3);
+                        })
+                        .attr("fill","#92cff4");
+            }else{
+                d3.select("."+c).select(".sankey").selectAll("g").remove();
+            }
+        },
+        get_sankey_path(orderAttr,d){
+            var y,
+                group_padding = 8,  // 子群之间间距
+                r = 3,          // 圆半径或者rect高度的一半
+                height = 273;   // 绘制空间
+            var timeScale = this.local_timeScale;
+            var context = d3.path();
+            var sourceX = timeScale(d.source.t)+r,
+                targetX = timeScale(d.target.t)-r,
+                sourceY = this.cal_sankey_node_y(orderAttr, d.source)+(d.sStart-1)*2*r+d.weight*r,
+                targetY = this.cal_sankey_node_y(orderAttr, d.target)+(d.tStart-1)*2*r+d.weight*r,
+                ctr_1 = [(sourceX+targetX)/2,sourceY],
+                ctr_2 = [(sourceX+targetX)/2,targetY];
+
+            context.moveTo(sourceX,sourceY);
+
+            context.bezierCurveTo(ctr_1[0],ctr_1[1],ctr_2[0],ctr_2[1],targetX,targetY);
+
+            return context.toString();
+        },
+        cal_sankey_node_y(orderAttr, d){
+            var y,
+                // item_padding = 2,   // 节点之间间距
+                group_padding = 8,  // 子群之间间距
+                r = 3,          // 圆半径或者rect高度的一半
+                height = 273;   // 绘制空间
+
+            if(orderAttr == "cluster"){
+                var numOfG = d.numOfGroup,
+                    start = d.startNIndex,
+                    len = d.total_len,
+                    gIndex = d.gIndex;
+                var padding_top = (height-len*2*r-(numOfG-1)*group_padding)/2;
+                return y = padding_top + (start-1)*2*r + (gIndex-1)*group_padding;
+            }else{
+
+            }
         },
         changeOrderAttr(attr){
             this.orderAttr = attr;

@@ -1,7 +1,7 @@
 <template lang="html">
-    <transition name="fade">
+    <!-- <transition name="fade"> -->
         <path :d="generate_d(path_group)" class="i_path" :data-item="JSON.stringify(path_group)" @mouseover="mouseOverHandler" @mouseout="mouseoutHandle"></path>
-    </transition>
+    <!-- </transition> -->
 </template>
 
 <script>

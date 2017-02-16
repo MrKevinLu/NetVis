@@ -1,6 +1,6 @@
 <template lang="html">
     <div id="g_network_view">
-        <net-FDA :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode"></net-FDA>
+        <net-FDA :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode" :backgroundColorMode="backgroundColorMode"></net-FDA>
         <net-MDS :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode" :mapAttr="mapAttr"></net-MDS>
         <div class="arrow arrow-left" @click="preTime">
         </div>
@@ -32,7 +32,8 @@ export default {
             type:"FDA",
             searchNode:'',
             dis_type:"radar",
-            mapAttr:"t_deg"
+            mapAttr:"t_deg",
+            backgroundColorMode:false   // true 底为白色
         };
     },
 
@@ -76,7 +77,8 @@ export default {
             var obj = {
                 layout:_this.type,
                 dis_type:_this.dis_type,
-                mapAttr:"t_deg"
+                mapAttr:"t_deg",
+                background:true
             }
             // var attrList = Object.keys(index_prop).map(d=>{return index_prop[d]});
             var gui = new dat.GUI({autoPlace: false});
@@ -86,7 +88,7 @@ export default {
             gui.add(obj,"layout",['MDS','FDA']).onChange(_this.toggleView);
             gui.add(obj,"dis_type",['radar','histogram']).onChange(_this.toggleDistributionView);
             gui.add(obj,"mapAttr",attrs).onChange(_this.changeMDS_mapAttr);
-
+            gui.add(obj,"background").onChange(_this.toggleBackgroundColorMode);
             gui.close();
         },
         toggleView(type){
@@ -94,6 +96,9 @@ export default {
         },
         toggleDistributionView(value){
             this.dis_type = value;
+        },
+        toggleBackgroundColorMode(){
+            this.backgroundColorMode = !this.backgroundColorMode;
         },
         changeMDS_mapAttr(value){
             this.mapAttr = value;

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <style>
+        rect{
+            fill:#97675D;
+        }
+        path{
+            fill:none;
+            stroke:rgba(255, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <svg width="960" height="500"></svg>
+    <script>
+        var svg = d3.select("svg");
+        var number = d3.interpolate;
+        var x1=100, x2 = 200;
+        svg.append("rect")
+            .attr("x",x1)
+            .attr("y",150)
+            .attr("width",20)
+            .attr("height",150);
+
+        svg.append("rect")
+            .attr("x",x2)
+            .attr("y",50)
+            .attr("width",20)
+            .attr("height",150);
+        svg.append("path")
+            .attr("d",getPath())
+            .style("stroke-width",150);
+        var x = number(120,180);
+        console.log(x(0.5));
+        function getPath(){
+            var context = d3.path();
+            var source = [x1+20,225],
+                target = [x2,125],
+                c1 = [(x1+x2)/2,225],
+                c2 = [(x1+x2)/2,125];
+            context.moveTo(source[0],source[1])
+            context.bezierCurveTo(c1[0],c1[1],c2[0],c2[1],target[0],target[1]);
+            return context.toString();
+        }
+    </script>
+</body>
+</html>

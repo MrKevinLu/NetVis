@@ -19,10 +19,11 @@ const state = {
     currentTime:"2011",
     hasInitial:false,
     clickNode:"",
-    selected:["Huamin Qu","Daniel A. Keim"], //"Huamin Qu","Kwan-Liu Ma"
+    selected:["Huamin Qu","Daniel A. Keim","Kwan-Liu Ma"], //"Huamin Qu","Kwan-Liu Ma"
     local_t_array: {
         "Huamin Qu":initTimes,
-        "Daniel A. Keim":initTimes
+        "Daniel A. Keim":initTimes,
+        "Kwan-Liu Ma":initTimes
     },
     index_prop:{
         0:"a_deg",      // 总的节点度，非时变

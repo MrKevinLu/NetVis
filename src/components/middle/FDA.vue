@@ -1,5 +1,10 @@
 <template lang="html">
-    <canvas id="fda" width="550" height="550" v-show="type == 'FDA'"></canvas>
+    <div class="" style="potition:relative">
+        <canvas id="fda" width="550" height="550" v-show="type == 'FDA'"></canvas>
+        <div id="canvasTooltip" class="ctxTooltip disabled">
+            this is a tooltip!
+        </div>
+    </div>
 </template>
 
 <script>
@@ -13,22 +18,26 @@ const xScale = d3.scaleLinear()
 const yScale = d3.scaleLinear()
                 .domain([0,550])
                 .range([550,0]);
-
+let levels = d3.range(16).slice(1);
 export default {
-    props:["type","time","searchNode","comDistribute"],
+    props:["type","time","searchNode","comDistribute","backgroundColorMode"],
     data() {
         return {
             context:"",
             canvasDom:'',
             newScaleX: xScale.copy(),
             newScaleY: yScale.copy(),
-            k:0.1,
+            k:1,
             hoverNode:'',
             colorInterpolation:"",
             nodeColor:'',
             mousemoveTimeout:'',
             threshold:0.3,
-            kScale: d3.scaleLinear().range([1,0]).domain([0.1,8])
+            kScale: d3.scaleLinear().range([1,0]).domain([0.1,8]),
+            // backgroundColorMode:false,   // true 底为白色
+            // shadowScale:d3.scaleLinear().range([0,1]),
+            // kScaleToLevel:  d3.scaleQuantize().domain([1,0.1]).range([1,2,3,4,5]),
+            newKScale:d3.scaleQuantize().domain([0.3,2]).range(levels.concat(levels.length+1).reverse())
 
         };
     },
@@ -59,6 +68,7 @@ export default {
                 var deg = attr_data[time][n.name][4];
                 return n.deg = deg;
             })
+
             // console.log(nodes);
             return nodes;
         },
@@ -101,8 +111,14 @@ export default {
             // var min_max = d3.extent(degs);
             var scale = d3.scaleLinear()
                             .domain(deg_min_max)
-                            .range([3,7]);
+                            .range([4,7]);
             return scale;
+        },
+        degScale:function(){
+            var nodes = this.nodes;
+            var deg_min_max = d3.extent(nodes,(n)=>n.deg);
+            var degScale = d3.scaleQuantize().domain([deg_min_max[0],deg_min_max[1]]).range(levels);
+            return degScale;
         }
     },
     mounted(){
@@ -112,6 +128,31 @@ export default {
         ...mapActions([
             "addIndividual"
         ]),
+        setNodeColor(){
+            var nodes = this.nodes,
+                backgroundColorMode = this.backgroundColorMode,
+                randomColorForNodes = {};
+
+            for(let n of nodes){
+                if(randomColorForNodes[n.community] == undefined){
+                    var interpolate;
+                    if(!backgroundColorMode){
+                        interpolate = d3.interpolate(0.4,0.7)
+                    }else{
+                        interpolate = d3.interpolate(0,0.5);
+                    }
+                    // var interpolate1 = d3.interpolate(0.4,0.7);
+                    // var interpolate1 = d3.interpolate(0,0.5);
+                    // randomColorForNodes[n.community] = d3.interpolateRainbow(Math.random()*1);
+                    randomColorForNodes[n.community] = d3.hsl(360*Math.random(),Math.random(),interpolate(Math.random()));
+                }
+            }
+
+            this.nodeColor = (groupIndex)=>{
+                return randomColorForNodes[groupIndex];
+                // return d3.interpolateRainbow(_this.colorInterpolation(groupIndex));
+            }
+        },
         initContext(){
             var canvas = document.getElementById('fda'),
                 ctx = canvas.getContext('2d');
@@ -127,18 +168,22 @@ export default {
                 links = _this.links,
                 canvas = document.getElementById("fda"),
                 threshold = _this.threshold,
-                rScale = _this.rScale;
+                rScale = _this.rScale,
+                newScaleX = this.newScaleX,
+                newScaleY = this.newScaleY;
+                // randomColorForNodes = {},
+                // backgroundColorMode = this.backgroundColorMode;
+
 
             // 给每个节点打社区标签
             _this.detectCommunity()
 
+
             // 添加虚拟边，计算节点模糊度
             _this.initNL();
-
+            _this.setNodeColor();
             // 设置节点颜色函数
-            _this.nodeColor = (groupIndex)=>{
-                return d3.interpolateRainbow(_this.colorInterpolation(groupIndex));
-            }
+
 
             // 缩放行为
             var zoom = d3.zoom().scaleExtent([0.1, 8]).on("zoom", _this.zoom);
@@ -159,12 +204,23 @@ export default {
                     var scale = d3.scaleLinear().domain(extent).range([100,60]);
                     return scale(l.weight);
                 }))
-                .force("outterCharge",d3.forceRepBetCommunity().threshold(threshold).strength(function(n,i,nodes){
+                .force("outterCharge",d3.forceRepBetCommunity().threshold(threshold).distanceMax(300).strength(function(n,i,nodes){
                     var extent = d3.extent(nodes,d=>d.children.length);
-                    var scale = d3.scaleLinear().domain(extent).range([-100,-400])
+
+                    var scale = d3.scaleLinear().domain(extent).range([-100,-1200])
                     return scale(n.children.length)
                 }))
-
+                // .force("metaCollide", d3.metaCollide().threshold(threshold).radius(function(d){
+                //     // var nodes = d.children;
+                //     //     var x0 = d3.mean(nodes,n=>newScaleX(n.x)),
+                //     //         y0 = d3.mean(nodes,n=>newScaleY(n.y));
+                //     //     var xExtent = d3.extent(nodes,n=>newScaleX(n.x)),
+                //     //         yExtent = d3.extent(nodes,n=>newScaleY(n.y));
+                //     //     var r1 = (xExtent[1]-xExtent[0])/2,
+                //     //         r2 = (yExtent[1]-yExtent[0])/2,
+                //     //         r = r1>=r2?r1*1.2:r2*1.2;
+                //         return 60;
+                // }))
                 .force("fuzzyLink",d3.forceLinkFuzzy().threshold(threshold).id(d=>d.gIndex).distance(l=>1/l.weight))
                 .force("center",d3.forceCenter(width/2,height/2));
 
@@ -199,7 +255,7 @@ export default {
             this.drawShadows();
             this.drawLinks();
             this.drawNodes();
-            this.drawTooltips();
+            // this.drawTooltips();
         },
         clearCanvas(){
             var ctx = this.context;
@@ -210,27 +266,43 @@ export default {
         drawBackground(){
             var ctx = this.context;
             var width = this.canvasSize.width,
-                height = this.canvasSize.height;
+                height = this.canvasSize.height,
+                backgroundColorMode = this.backgroundColorMode;
             ctx.beginPath()
-            ctx.fillStyle="black";
+            if(backgroundColorMode){
+                ctx.fillStyle="white";
+            }else{
+                ctx.fillStyle="black";
+            }
             ctx.fillRect(0,0,width,height);
         },
         drawShadows(){
             var shadowData = this.getShawdowData();
             var ctx = this.context,
                 color = this.nodeColor,
-                kScale = this.kScale,
-                currentK = this.k;
+                // kScale = this.kScale,
+                currentK = this.k,
+                degScale = this.degScale,
+                newKScale = this.newKScale,
+                backgroundColorMode = this.backgroundColorMode;
 
             for(let shadow of shadowData){
+                var totalNodes = shadow.nodes,
+                    leftNodes = totalNodes.filter(n=>degScale(n.deg)>=newKScale(currentK)),
+                    opacity = 1-leftNodes.length/totalNodes.length;
                 ctx.beginPath()
                 var {x0,y0,r,gIndex} = shadow;
                 // context.fillStyle = "rgba(119, 113, 113,0.5)"
-                var grad  = ctx.createRadialGradient(x0,y0,r*0.5,x0,y0,r)
-                var c = d3.color(color(+gIndex));
-                c.opacity = kScale(currentK);
-                grad.addColorStop(0,`rgba(0,0,0,${kScale(currentK)})`)
-                grad.addColorStop(1,c)
+                var grad  = ctx.createRadialGradient(x0,y0,0,x0,y0,r)
+                var c = d3.color(color(gIndex));
+                // c.opacity = kScale(currentK);
+                c.opacity = opacity;
+                if(backgroundColorMode){
+                    grad.addColorStop(1,`rgba(255,255,255,${opacity})`)
+                }else{
+                    grad.addColorStop(1,`rgba(0,0,0,${opacity})`)
+                }
+                grad.addColorStop(0,c);
                 ctx.fillStyle = grad;
                 ctx.arc(x0, y0, r, 0, 2 * Math.PI);
                 ctx.fill();
@@ -245,7 +317,10 @@ export default {
                 rScale = this.rScale,
                 color = this.nodeColor,
                 searchNode = this.searchNode,
-                threshold = this.threshold;
+                threshold = this.threshold,
+                degScale = this.degScale,
+                newKScale = this.newKScale,
+                currentK = this.k;
 
             // for(let [i,n] of nodes.entries()){
             //     if(n.name.startsWith("group")) continue;
@@ -267,6 +342,9 @@ export default {
             // }
 
             for(let [i,n] of nodes.entries()){
+                if(degScale(n.deg)<newKScale(currentK)){
+                    continue;
+                }
                 ctx.beginPath();
                 var cx = newScaleX(n.x)||0,
                     cy = newScaleY(n.y)||0,
@@ -306,16 +384,29 @@ export default {
                 newScaleX = this.newScaleX,
                 newScaleY = this.newScaleY,
                 hoverNode = this.hoverNode,
-                searchNode = this.searchNode;
+                searchNode = this.searchNode,
+                degScale = this.degScale,
+                newKScale = this.newKScale,
+                currentK = this.k,
+                backgroundColorMode = this.backgroundColorMode;
+
             for(let l of links){
                 if(l.virtual==true) continue;
+                var source = l.source,
+                    target = l.target;
+                if(degScale(source.deg)<newKScale(currentK) || degScale(target.deg)<newKScale(currentK)) continue;
+
                 ctx.beginPath()
                 ctx.lineWidth = l.weight || l.value;
                 ctx.strokeStyle = 'rgba(255, 170, 0, 0.4)'
                 if(hoverNode!='' || searchNode==l.source.name || searchNode == l.target.name){
                     if(l.source.name == hoverNode.name || l.target.name==hoverNode.name || l.source.name == searchNode || l.target.name == searchNode){
                         ctx.lineWidth = 2;
-                        ctx.strokeStyle = 'rgba(255,255,255,0.7)'
+                        if(backgroundColorMode){
+                            ctx.strokeStyle = 'rgba(132, 129, 129,0.9)'
+                        }else{
+                            ctx.strokeStyle = 'rgba(255,255,255,0.7)'
+                        }
                     }else{
                         ctx.strokeStyle = 'rgba(201, 199, 199,0.1)'
                     }
@@ -367,6 +458,12 @@ export default {
         },
         zoom(){
             this.k = d3.event.transform.k;
+            var newKScale = this.newKScale;
+            var nodes = this.nodes;
+            var degScale = this.degScale;
+
+            // console.log("k:"+this.k);
+            // console.log("level:"+newKScale(this.k));
             this.newScaleX = d3.event.transform.rescaleX(xScale);
             this.newScaleY = d3.event.transform.rescaleY(yScale);
             this.draw();
@@ -414,18 +511,37 @@ export default {
                 yScale = _this.newScaleY,
                 flag = false;
             this.mousemoveTimeout = setTimeout(function(){
+                d3.select("#canvasTooltip").classed("disabled",true);
                 for(let n of nodes){
                     var r = rScale(n.deg),
                         cx = xScale(n.x),
                         cy = yScale(n.y);
+
                     if(!n.name.startsWith("group") && Math.pow(cx-mouseX,2)+Math.pow(cy-mouseY,2)<r*r){
                         _this.hoverNode = n
-                        n.hoveron = true
+                        n.hoveron = true;
                         flag = true;
+                        var content = `name:  ${n.name}<br/>deg:  ${n.deg}`;
+                        d3.select("#canvasTooltip").classed("disabled",false)
+                                                   .style("left",function(d){
+                                                       return mouseX+10+"px";
+                                                   })
+                                                   .style("top",function(d){
+                                                       return mouseY+10+"px";
+                                                   })
+                                                   .html(content);
                         break;
                     }else{
                         n.hoveron = false;
                     }
+                    // if(!n.name.startsWith("group") && Math.pow(cx-mouseX,2)+Math.pow(cy-mouseY,2)<r*r){
+                    //     _this.hoverNode = n
+                    //     n.hoveron = true
+                    //     flag = true;
+                    //     break;
+                    // }else{
+                    //     n.hoveron = false;
+                    // }
                 }
                 if(!flag){
                     _this.hoverNode = ''
@@ -479,8 +595,9 @@ export default {
                 return {
                     x0,
                     y0,
-                    r,
-                    gIndex:g
+                    r:r+2,
+                    gIndex:g,
+                    nodes
                 }
             })
             return shadowData;
@@ -538,9 +655,9 @@ export default {
             Object.keys(groups).forEach(gIndex=>{
                 var nodes = groups[gIndex];
                 for(let [i,n] of nodes.entries()){
-                    if(n.fuzzy>threshold) continue;
+                    if(n.fuzzy>threshold) continue; // 模糊度大于特定值的节点不添加虚拟边
                     for(let [j,m] of nodes.entries()){
-                        if(n.fuzzy>threshold) continue;
+                        if(n.fuzzy>threshold) continue;  // 模糊度大于特定值的节点不添加虚拟边
                         var id1 = n.id||n.name,
                             id2 = m.id||m.name;
                         if(i<j){
@@ -579,6 +696,10 @@ export default {
         time:function(){
             this.init();
             // this.draw();
+        },
+        backgroundColorMode:function(){
+            this.setNodeColor();
+            this.draw();
         }
         // nodes:function(){
         //     console.log("nodes changed");
@@ -587,5 +708,19 @@ export default {
 };
 </script>
 
-<style lang="css">
+<style lang="css" scoped>
+    .ctxTooltip{
+        position: absolute;
+        width:auto;
+        padding:10px;
+        line-height: 20px;
+        color:white;
+        background-color: rgba(155, 144, 144,0.7);
+        border-radius: 4px;
+        font-size:14px;
+    }
+
+    .ctxTooltip.disabled{
+        display:none;
+    }
 </style>

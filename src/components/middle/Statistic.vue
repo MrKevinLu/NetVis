@@ -185,6 +185,7 @@ export default {
     #statistic{
         flex:1;
         width:100%;
+        border-top: solid 1px grey;
         /*background-color: lightgrey;*/
     }
     .highcharts-background{

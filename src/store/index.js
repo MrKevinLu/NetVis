@@ -182,12 +182,16 @@ const getters = {
                                 .domain(min_max)
                                 .range([0,1]);
                 prop_quantile[attr].push(quantile_1,quantile_3);
-                scales[attr] = scale;
+                scales[attr] = value=>{
+                    return  chroma.scale(['#e5ebf9', '#3016f4'])(scale(value))
+                };
 
             }else{
                 var scale = d3.scaleOrdinal()
                                 .domain(Array.from(new Set(values)))
                                 .range(["red","blue","orange"]);
+
+                console.log(Array.from(new Set(values)));
                 prop_quantile[attr].push(1.5,2.5); // 类别型数据还需处理下
                 scales[attr] = scale;
 

@@ -45,7 +45,48 @@ export default {
             return this.quantile_scales.prop_quantile;
         },
         colorScales(){
-            return this.quantile_scales.scales;
+            // 每个时间片各自计算比例尺，而非全局比例尺
+            var attr_data = this.attr_data,
+                time = this.time,
+                mdsColorScales = {},
+                attr_values = {},
+                prop_index = this.prop_index,
+                index_prop = this.index_prop;
+
+            Object.keys(prop_index).forEach((attr)=>{
+                attr_values[attr] = [];
+            })
+
+            Object.keys(attr_data[time]).forEach(name=>{
+                var values = attr_data[time][name];
+                for(let [i,v] of values.entries()){
+                    attr_values[index_prop[i]].push(v);
+                }
+            })
+            Object.keys(attr_values).forEach(attr=>{
+                var scale;
+                if(attr!="t_venue"){
+                    // var min_max = d3.extent(attr_values[attr]);
+                    // var scale = chroma
+                    var min_max = d3.extent(attr_values[attr]);
+
+                    var interpolate = d3.scaleLinear()
+                                    .domain(min_max)
+                                    .range([0,1]);
+                    scale = value=>{
+                        return chroma.scale(['#e5f5f9', '#005824'])(interpolate(value))
+                        // return chroma.scale(['#e5ebf9', '#3016f4'])(interpolate(value))
+                    }
+                }else{
+                    scale = d3.scaleOrdinal()
+                                    .domain([1,2,3])
+                                    .range(["#e66101","#fdb863","#b2abd2"]);
+                                    // .range(["red","blue","orange"]);
+                }
+                mdsColorScales[attr] = scale;
+            })
+            return mdsColorScales;
+            // return this.quantile_scales.scales;
         },
         index_prop() {
             return this.$store.state.index_prop;
@@ -139,7 +180,7 @@ export default {
                     var value = nodesByIndex[i].values[prop_index[mapAttr]];
                     // console.log(values);
                     if(mapAttr!="t_venue")
-                        ctx.fillStyle = chroma.scale(['#e5ebf9', '#3016f4'])(colorScales[mapAttr](value))
+                        ctx.fillStyle = colorScales[mapAttr](value)
                     else{
                         ctx.fillStyle = colorScales[mapAttr](value);
                     }
@@ -219,7 +260,19 @@ export default {
                         groups["group" + j].color = b.color;
                     })
                 }
+                // index_prop:{
+                //     0:"a_deg",      // 总的节点度，非时变
+                //     1:"a_pub",        // 总的发表量，非时变
+                //     2:"t_avgW",       // 平均边权重，时变
+                //     3:"t_pub",        // 当年发表量，时变
+                //     4:"t_deg",     // 当年的节点度，时变
+                //     5:"t_dCent",   // 度中心性 节点的度/N-1  N为所有节点，时变
+                //     6:"t_avgC",       // 邻居节点的平均度中心性，时变
+                //     7:"t_cc",         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
+                //     8:"t_venue"       // 文章发表在1.期刊 2.会议 3.both
+                // },
                 var attrs = ["a_deg", "a_pub", "t_pub"]
+                // var attrs = ["t_avgW", "t_dCent", "t_cc"]
                 series = this.getDistribution(type, attrs);
                 this.drawDistribution(type, attrs, series);
             }
@@ -260,11 +313,11 @@ export default {
                     for (let n of nodes) {
                         for (let a of attrs) {
                             var index = prop_index[a];
-                            if (n.values[index] <= quantile[a][0])
+                            if (n.values[index] <= quantile[a][0])      // 小于等于1/4位点
                                 tmp_dis[a][0]++;
-                            else if (n.values[index] <= quantile[a][1])
+                            else if (n.values[index] <= quantile[a][1]) // 1/4和3/4之间
                                 tmp_dis[a][1]++;
-                            else {
+                            else {  // 大于3/4位点
                                 tmp_dis[a][2]++;
                             }
                             // console.log(quantile[a]);
@@ -284,19 +337,20 @@ export default {
                             arrays[d].push(tmp_dis[a][d])
                         })
                     })
+                    arrays.reverse();
                     for (let [i, array] of arrays.entries()) {
                         if (array.length != 0 && d3.sum(array) > 0) {
-                            var name = i == 0 ? "小于1/4" : (i == 1 ? "1/4-3/4" : "大于3/4");
+                            var name = i == 2 ? "小于1/4" : (i == 1 ? "1/4-3/4" : "大于3/4");
                             var color = d3.hsl(groups[gName].color);
                             if (name == "小于1/4") {
-                                color.s = color.s * 0.6;
-                                color.l = color.l - 0.14;
+                                // color.s = color.s * 0.6;
+                                color.l = color.l + 0.14;
                             } else if (name == "1/4-3/4") {
-                                color.s = color.s * 0.8;
-                                color.l = color.l - 0.07;
-                            } else {
-                                color.s = color.s;
+                                // color.s = color.s * 0.8;
                                 color.l = color.l;
+                            } else {
+                                // color.s = color.s;
+                                color.l = color.l-0.14;
                             }
                             series.push({
                                 "name": name,
@@ -390,7 +444,7 @@ export default {
                     },
 
                     xAxis: {
-                        categories: ['a_deg', 'a_pub', 't_pub']
+                        categories: attrs //['a_deg', 'a_pub', 't_pub']
                     },
                     legend: {
                         enabled: false
@@ -409,8 +463,13 @@ export default {
                         visible: false
                     },
                     tooltip: {
-                        pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b> ({point.percentage:.0f}%)<br/>',
-                        shared: true
+                        formatter: function () {
+                            return '<b>' + this.x + '</b><br/>' +
+                                this.series.name + ': ' + this.y + '<br/>' +
+                                'Total: ' + this.point.stackTotal;
+                        }
+                        // pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b> ({point.percentage:.0f}%)<br/>',
+                        // shared: true
                     },
                     plotOptions: {
                         column: {

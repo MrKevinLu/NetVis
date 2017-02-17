@@ -1,6 +1,6 @@
 <template lang="html">
     <div class="individual" :class="{[classed]:true}">
-        <!-- <div class="tooltip">
+        <div class="tooltip">
 
         </div>
         <div class="foldPanel">
@@ -17,15 +17,19 @@
                         </g>
                         <g class="nodesBrush"></g>
                         <g class="path-group">
-                            <edge v-for="(l,index) in links" v-bind:key="index" :path_group="l" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></edge>
+
+                            <path v-for="(path_group,index) in links" v-bind:key="index" :d="generate_d(path_group)" class="i_path" :data-item="JSON.stringify(path_group)" ></path>
+
+                            <!-- <edge v-for="(l,index) in links" v-bind:key="index" :path_group="l" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></edge> -->
                         </g>
                         <g class="node-group">
-                            <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></node>
+                            <circle v-for="(node,index) in nodes" v-bind:key="index" class="i_item" :data-item="JSON.stringify(node)" :cx="cal_x(node)" :cy="cal_y(node)" r="3" :fill="nodeColor(mapAttr,node)" @mouseover="nodeMouseoverHandler($event)" @mouseout="nodeMouseoutHandle($event)"></circle>
+                            <!-- <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></node> -->
                         </g>
                         <g class="sankey"></g>
                     </g>
             </svg>
-        </div> -->
+        </div>
 
     </div>
 </template>
@@ -1275,6 +1279,93 @@ export default {
                 return scale(values[prop_index[mapAttr]])
             }
         },
+        generate_d(group){
+            var context = d3.path();
+            this.drawPath(context,group);
+            return context.toString();
+        },
+        drawPath(context,group){
+            var start = group[0],
+                len = group.length,
+                local_timeScale = this.local_timeScale;
+            context.moveTo(this.cal_x(start), this.cal_y(start))
+
+            for(let [i,n] of group.entries()){
+                if(i!=0){
+                    var s_node = group[i-1],
+                        d_node = n,
+                        ctr_1 = [(this.cal_x(d_node)+this.cal_x(s_node))/2,this.cal_y(s_node)],
+                        ctr_2 = [(this.cal_x(d_node)+this.cal_x(s_node))/2,this.cal_y(d_node)];
+                    context.bezierCurveTo(ctr_1[0],ctr_1[1],ctr_2[0],ctr_2[1],this.cal_x(d_node),this.cal_y(d_node));
+                }
+            }
+        },
+        nodeMouseoverHandler(event){
+            var _this = this,
+                attr = _this.orderAttr,
+                index_prop = _this.index_prop,
+                svgWidth = _this.svgWidth,
+                svgHeight = _this.svgHeight,
+                orderAttr = _this.orderAttr;
+
+            var {target,offsetX,offsetY} = event,
+                currentElement = event.currentTarget,
+                node = _this.getDataByAttr(d3.select(currentElement), "data-item");
+
+            // var content = '';
+            // node.values.forEach((v,i)=>{
+            //     content+=`</br>${index_prop[i]}:${v}`;
+            // })
+            var content = orderAttr == "cluster"?`gIndex:${node.data.cluster.gIndex}</br>index:${node.data.cluster.index}</br>tIndex:${node.data.cluster.tIndex}`:`gIndex:${node.data.group.gIndex}</br>index:${node.data.group.index}`;
+            d3.select("."+_this.classed)
+                .select(".tooltip")
+                .style("left",function(d){
+                    if(svgWidth-offsetX>100)
+                        return offsetX+10+"px"
+                    else{
+                        return offsetX-120+"px"
+                    }
+                })
+                .style("top",offsetY-10+"px")
+                .html(content)
+                // .html(`<span class='hoverName'>${node.data.name}</span>${content}`)
+                .style("display","block");
+
+            d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                if(d.data.name == node.data.name){
+                    return "gold"
+                }else{
+                    return 'lightgrey';
+                }
+            })
+            d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                if(d[0].data.name == node.data.name){
+                    return "gold"
+                }else{
+                    return 'lightgrey';
+                }
+            })
+        },
+        nodeMouseoutHandle(){
+            var _this = this,
+                color = _this.nodeColor,
+                mapAttr = _this.mapAttr;
+                // values = _this.values;
+            var {target,offsetX,offsetY} = event;
+            d3.select("."+_this.classed)
+                .select(".tooltip")
+                .style("display","none");
+
+            d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(d){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                return color(mapAttr,d);
+            })
+            d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
+                return 'lightgrey';
+            })
+        }
     },
     components: {
         Node,
@@ -1390,6 +1481,11 @@ export default {
         color:white;
 
     }
+    .i_path{
+        fill:none;
+        stroke:lightgrey;
+        stroke-width:2px;
+    }
 
 </style>
 
@@ -1411,5 +1507,6 @@ export default {
     text-align: right;
     padding-right:10px;
 }
+
 
 </style>

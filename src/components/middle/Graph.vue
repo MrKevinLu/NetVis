@@ -31,9 +31,9 @@ export default {
             communityResult: {},
             type:"FDA",
             searchNode:'',
-            dis_type:"radar",
+            dis_type:"histogram",
             mapAttr:"t_deg",
-            backgroundColorMode:false   // true 底为白色
+            backgroundColorMode:true   // true 底为白色
         };
     },
 

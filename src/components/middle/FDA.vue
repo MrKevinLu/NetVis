@@ -136,10 +136,10 @@ export default {
             for(let n of nodes){
                 if(randomColorForNodes[n.community] == undefined){
                     var interpolate;
-                    if(!backgroundColorMode){
-                        interpolate = d3.interpolate(0.4,0.7)
+                    if(backgroundColorMode){
+                        interpolate = d3.interpolate(0,0.9);
                     }else{
-                        interpolate = d3.interpolate(0,0.5);
+                        interpolate = d3.interpolate(0.4,0.7)
                     }
                     // var interpolate1 = d3.interpolate(0.4,0.7);
                     // var interpolate1 = d3.interpolate(0,0.5);
@@ -250,11 +250,12 @@ export default {
 
         draw(){
 
-            this.clearCanvas();
-            this.drawBackground();
-            this.drawShadows();
-            this.drawLinks();
-            this.drawNodes();
+            this.clearCanvas(); // 清空
+            this.drawBackground();    // 绘制背景色
+            this.drawConnectedGroupsShadows();
+            this.drawShadows();     // 绘制每个社团的阴影
+            this.drawLinks();   // 绘制节点之间的连线
+            this.drawNodes();   // 绘制节点
             // this.drawTooltips();
         },
         clearCanvas(){
@@ -275,6 +276,9 @@ export default {
                 ctx.fillStyle="black";
             }
             ctx.fillRect(0,0,width,height);
+        },
+        drawConnectedGroupsShadows(){
+
         },
         drawShadows(){
             var shadowData = this.getShawdowData();

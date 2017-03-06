@@ -3,8 +3,6 @@
         <global-info></global-info>
         <community-dis></community-dis>
         <sort-view></sort-view>
-        <!-- <button class="add_author">add</button>
-        <button class="delete_author">delete</button> -->
     </div>
 
 </template>
@@ -32,12 +30,6 @@ export default {
     },
     mounted(){
         var _this = this;
-        d3.select(".add_author").on("click",function(){
-            _this.addIndividual("Thomas Ertl");
-        })
-        d3.select(".delete_author").on("click",function(){
-            _this.deleteIndividual("Thomas Ertl");
-        })
     },
     methods: {
         ...mapActions([

@@ -6,8 +6,8 @@
         </div>
 
         <div class="colum main-middle">
-            <net-graph></net-graph>
-            <net-stat></net-stat>
+            <!-- <net-graph></net-graph>
+            <net-stat></net-stat> -->
         </div>
 
         <div class="colum main-right">

@@ -29,10 +29,10 @@ export default {
         return {
             community: null,
             communityResult: {},
-            type:"FDA",
+            type:"MDS",
             searchNode:'',
             dis_type:"histogram",
-            mapAttr:"t_deg",
+            mapAttr:"default",
             backgroundColorMode:true   // true 底为白色
         };
     },
@@ -77,7 +77,7 @@ export default {
             var obj = {
                 layout:_this.type,
                 dis_type:_this.dis_type,
-                mapAttr:"t_deg",
+                mapAttr:"default",
                 background:true
             }
             // var attrList = Object.keys(index_prop).map(d=>{return index_prop[d]});
@@ -87,7 +87,7 @@ export default {
             customContainer.appendChild(gui.domElement);
             gui.add(obj,"layout",['MDS','FDA']).onChange(_this.toggleView);
             gui.add(obj,"dis_type",['radar','histogram']).onChange(_this.toggleDistributionView);
-            gui.add(obj,"mapAttr",attrs).onChange(_this.changeMDS_mapAttr);
+            gui.add(obj,"mapAttr",attrs.concat("default")).onChange(_this.changeMDS_mapAttr);
             gui.add(obj,"background").onChange(_this.toggleBackgroundColorMode);
             gui.close();
         },
@@ -181,14 +181,14 @@ export default {
     content:"<";
     font-size:40px;
     color:black;
-    padding-top:5px;
+    /*padding-top:5px;*/
 }
 .arrow-right:before{
     display:block;
     content:">";
     font-size:40px;
     color:black;
-    padding-top:5px;
+    /*padding-top:5px;*/
 }
 .search{
     position: absolute;

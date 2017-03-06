@@ -32,12 +32,12 @@ export default {
             colorInterpolation:"",
             nodeColor:'',
             mousemoveTimeout:'',
-            threshold:0.3,
+            threshold:0.2,
             kScale: d3.scaleLinear().range([1,0]).domain([0.1,8]),
             // backgroundColorMode:false,   // true 底为白色
             // shadowScale:d3.scaleLinear().range([0,1]),
             // kScaleToLevel:  d3.scaleQuantize().domain([1,0.1]).range([1,2,3,4,5]),
-            newKScale:d3.scaleQuantize().domain([0.3,2]).range(levels.concat(levels.length+1).reverse())
+            newKScale:d3.scaleQuantize().domain([0.3,1]).range(levels.concat(levels.length+1).reverse())
 
         };
     },
@@ -119,9 +119,60 @@ export default {
             var deg_min_max = d3.extent(nodes,(n)=>n.deg);
             var degScale = d3.scaleQuantize().domain([deg_min_max[0],deg_min_max[1]]).range(levels);
             return degScale;
+        },
+        statisticCommunity:function(){
+            var graph = this.graph;
+
+            if(!graph) return "社团统计失败";
+            var nodes, links;
+            var times = Object.keys(graph).sort((a,b)=>a-b);
+            for(let t of times){
+                nodes = graph[t].nodes;
+                links = graph[t].links;
+                var id_index = {};
+                var temp_c = {};
+                var community = jLouvain().nodes(nodes.map((d, i) => {
+                    var key = d.id||d.name
+                    id_index[key] = i;
+                    return i;
+                })).edges(links.map(l => {
+                    return {
+                        weight: l.weight || l.value,
+                        source: id_index[l.source],
+                        target: id_index[l.target]
+                    };
+                }));
+                var community_assignment_result = community();
+                // var max_community_number = 0;
+                nodes.forEach((d, i) => {
+                    d.tmpCommunity = community_assignment_result[i];
+                    // max_community_number = max_community_number < community_assignment_result[i] ? community_assignment_result[i] : max_community_number;
+                })
+                nodes.forEach((d,i)=>{
+                    if(!temp_c[d.tmpCommunity]){
+                        temp_c[d.tmpCommunity] = 0;
+                    }
+                    temp_c[d.tmpCommunity]++;
+                })
+
+                var number = Object.keys(temp_c).filter(a=>temp_c[a]>5).length;
+                console.log(t, number);
+                // console.log(community_assignment_result);
+            }
+
+
+
+
+            console.log(times);
+            return times;
+            // for(let t of times){
+            //     console.log(t);
+            // }
         }
     },
     mounted(){
+
+        console.log("first mounted")
         this.initContext();
     },
     methods: {
@@ -174,10 +225,9 @@ export default {
                 // randomColorForNodes = {},
                 // backgroundColorMode = this.backgroundColorMode;
 
-
             // 给每个节点打社区标签
             _this.detectCommunity()
-
+            // console.log(_this.statisticCommunity);
 
             // 添加虚拟边，计算节点模糊度
             _this.initNL();
@@ -703,6 +753,9 @@ export default {
         },
         backgroundColorMode:function(){
             this.setNodeColor();
+            this.draw();
+        },
+        searchNode:function(){
             this.draw();
         }
         // nodes:function(){

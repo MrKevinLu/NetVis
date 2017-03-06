@@ -3,6 +3,7 @@ import Vuex from 'vuex'
 import * as actions from './actions'
 import * as types from './mutation-types'
 import mutations from './mutations'
+import chroma from 'chroma-js'
 import d3 from '../lib/d3-extend'
 // import chroma from 'chroma-js'
 
@@ -16,7 +17,7 @@ const state = {
     attr_data:"",
     node_to_index:"",
     mds:"",
-    currentTime:"2011",
+    currentTime:"2013",
     hasInitial:false,
     clickNode:"",
     selected:["Huamin Qu","Daniel A. Keim","Kwan-Liu Ma"], //"Huamin Qu","Kwan-Liu Ma"
@@ -151,9 +152,9 @@ const getters = {
 
     // 各个属性的1/4 和 3/4位点以及比例尺
     quantile_scales(state,getters){
-        var attr_data = state.attr_data;
-
-        if(attr_data == "") return;
+        var attr_data = state.attr_data,
+            graph = state.graph;
+        if(attr_data == "" || graph == "") return;
         var prop_domains={},
             prop_quantile = {},
             scales = {},
@@ -171,20 +172,47 @@ const getters = {
                 }
             }
         }
+        // 获取合作强度
+        // var times = Object.keys(graph),
+        //     weightValues = [];
+        // for(let t of times){
+        //     var links = graph[t].links;
+        //     for(let l of links){
+        //         var weight = l.weight || l.value;
+        //         weightValues.push(weight);
+        //     }
+        // }
+        // weightValues.sort((a,b)=>a-b);
+        // var w_q_1 = d3.quantile(weightValues,0.25),
+        //     w_q_3 = d3.quantile(weightValues,0,75);
+        // prop_quantile[strength] = [w_q_1,w_q_]
         // 获取每个属性对应的四分之一位点和四分之三位点
         for(let attr in prop_domains){
             var values = prop_domains[attr].sort((a,b)=>a-b);
             if(attr!="t_venue"){
-                var quantile_1 = d3.quantile(values,0.25),
+                var quantile_1,quantile_3;
+                if(attr == "t_cc"){
+                    quantile_1 = 0.25;
+                    quantile_3 = 0.75;
+                }else{
+                    quantile_1 = d3.quantile(values,0.25);
                     quantile_3 = d3.quantile(values,0.75);
+                }
+                if(attr == "t_pub"){
+                    quantile_1 = 1;
+                    quantile_3 = 2;
+                    console.log(quantile_1,quantile_3)
+                }
+                    // quantile_3 = d3.quantile(values,0.75);
                 var min_max = d3.extent(values),
                     scale = d3.scaleLinear()
                                 .domain(min_max)
                                 .range([0,1]);
                 prop_quantile[attr].push(quantile_1,quantile_3);
-                scales[attr] = value=>{
-                    return  chroma.scale(['#e5ebf9', '#3016f4'])(scale(value))
-                };
+                scales[attr] = scale;
+                // scales[attr] = value=>{
+                //     return  chroma.scale(['#e5ebf9', '#3016f4'])(scale(value))
+                // };
 
             }else{
                 var scale = d3.scaleOrdinal()
@@ -199,11 +227,12 @@ const getters = {
         }
 
         // 获取属性颜色映射比例尺
-        for(let attr in prop_domains){
-            if(attr != "t_venue"){
-                var values = prop_domains[attr]
-            }
-        }
+        // for(let attr in prop_domains){
+        //     if(attr != "t_venue"){
+        //         var values = prop_domains[attr]
+        //     }
+        // }
+        console.log(prop_quantile);
         return {prop_quantile,scales};
     }
 }

@@ -23,7 +23,7 @@
                             <!-- <edge v-for="(l,index) in links" v-bind:key="index" :path_group="l" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></edge> -->
                         </g>
                         <g class="node-group">
-                            <circle v-for="(node,index) in nodes" v-bind:key="index" class="i_item" :data-item="JSON.stringify(node)" :cx="cal_x(node)" :cy="cal_y(node)" r="3" :fill="nodeColor(mapAttr,node)" @mouseover="nodeMouseoverHandler($event)" @mouseout="nodeMouseoutHandle($event)"></circle>
+                            <circle v-for="(node,index) in nodes" v-bind:key="index" class="i_item" :data-item="JSON.stringify(node)" :cx="cal_x(node)" :cy="cal_y(node)" r="3" :fill="nodeColor(mapAttr,node)" @click="nodeClickHandler($event)" @mouseover="nodeMouseoverHandler($event)" @mouseout="nodeMouseoutHandle($event)"></circle>
                             <!-- <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></node> -->
                         </g>
                         <g class="sankey"></g>
@@ -65,10 +65,11 @@ export default {
             // time_range: ["1990", "2016"],  // 总的时间范围
             orderAttr: "cluster",
             mapAttr: "default",
+            comColorMap:"default",
             local_y_scale:"",
             is_axis_drawed:false,
             svgWidth: 650,
-            svgHeight: 358,
+            svgHeight: 550, //358
             axisHeight: 50,
             isShowed:true,
             local_t_array:[...this.timeArray],
@@ -130,6 +131,7 @@ export default {
                 coNames,
                 coNames_seq = {},
                 links = [];
+            // console.log(nodes, this.selected);
             if(nodes==[] || !nodes) return links;
             for(let n of nodes){
                 coNames_seq[n.data.name] = []
@@ -195,10 +197,10 @@ export default {
                 }
 
             }
-            // console.log("links +++++++11111")
+            // console.log("links 222222222")
 
             var endTime = new Date();
-            console.log("links takes:",(endTime-startTime)/1000);
+            // console.log("links takes:",(endTime-startTime)/1000);
             return links;
         },
         // 合作者数组，{time,data}
@@ -232,9 +234,9 @@ export default {
                     })
                 }
             }
-
+            // console.log("nodes   1111111")
             var endTime = new Date();
-            console.log("nodes takes:",(endTime-startTime)/1000);
+            // console.log("nodes takes:",(endTime-startTime)/1000);
             // console.log("nodes +++++++22222")
             return coNodes;
         },
@@ -317,21 +319,27 @@ export default {
         orderAttr:function(n,o){
             this.node_classified(n);   // 节点按属性值归类排号
         },
-        nodes: function(n, o) {
-            if(!this.is_axis_drawed){
-                console.log("first")
-                this.is_axis_drawed = true;
-                this.node_classified(this.orderAttr);
-                this.drawAxis();
-                // console.log(11111);
-            }
-        },
+        // nodes: function(n, o) {
+        //     console.log("nodes change");
+        //     // if(!this.is_axis_drawed){
+        //     //     this.is_axis_drawed = true;
+        //     //     this.drawAxis();
+        //     // }
+        //     // this.node_classified(this.orderAttr);
+        //     // console.log("watch nodes 444444")
+        // },
         selectNodes:function(){
             console.log("selectNodes change");
         },
         links:function(){
+            console.log("links change!");
+            if(!this.is_axis_drawed){
+                this.is_axis_drawed = true;
+                this.drawAxis();
+            }
             this.node_classified(this.orderAttr);
-            // console.log(22222);
+
+            // console.log("watch links 3333333")
         }
 
     },
@@ -513,20 +521,23 @@ export default {
             var nodes = this.nodes,
                 attr_data = this.attr_data,
                 times = Array.from(new Set(nodes.map(d=>d.time))).sort((a,b)=>a-b),
+                sortValueArr = [],
                 // local_t_array = this.local_t_array,
                 quantile = this.quantile_scales.prop_quantile,
                 prop_index = this.prop_index,    // 属性名-序号的映射
                 t_g_num = {},   // 存储每年不同组的节点个数
                 t_nodes = {};   // 按年存节点
-
-            // for(let t of times) t_nodes[t] = [];
-            // for(let n of nodes) t_nodes[n.time].push(n.data);
-            // for(let i in index_prop){
-            //     prop_index[index_prop[i]] = i
-            // }
+            for(let n of nodes){
+                let t = n.time,
+                    name = n.data.name,
+                    value = n.values[prop_index[orderAttr]];
+                sortValueArr.push(value)
+            }
+            sortValueArr = Array.from(new Set(sortValueArr)).sort((a,b)=>a-b);
+            console.log(sortValueArr);
             var q_1 = quantile[orderAttr][0],
                 q_3 = quantile[orderAttr][1];
-            console.log(q_1,q_3);
+            console.log("排序属性的两个位点：",q_1,q_3);
             for(let t of times) {
                 t_nodes[t] = [];
                 t_g_num[t] = {};
@@ -537,9 +548,45 @@ export default {
             for(let n of nodes){
                 t_nodes[n.time].push(n.data);
             }
+
             // 存储group 包含gIndex,index,len,numOfG
-            for(let t in t_nodes){
+
+            // for(let t of times){
+            //     var temp_nodes = t_nodes[t],
+            //     var group_index={
+            //         1:0,
+            //         2:0,
+            //         3:0
+            //     }
+            //     temp_nodes.forEach(n=>{
+            //         var values = attr_data[t][n.name],
+            //             c_value = values[prop_index[orderAttr]],
+            //             gIndex;
+            //         if(c_value<=q_1) gIndex = 1;
+            //         else if (c_value<=q_3) gIndex = 2;
+            //         else gIndex = 3;
+            //         if(!n.group) n.group = {};
+            //         group_index[gIndex]++
+            //         n.group.gIndex = gIndex;
+            //         n.group.index = group_index[gIndex];
+            //         n.group.numOfG = Object.keys(group_index).length;
+            //         t_g_num[t][gIndex]++;
+            //     })
+            //     temp_nodes.forEach(n=>{
+            //         n.group.len = t_g_num[t][n.group.gIndex];
+            //     })
+            //     // console.log("************");
+            //     // temp_nodes.sort((a,b)=>a.group.gIndex-b.group.gIndex);
+            //     // temp_nodes.forEach(n=>{
+            //     //     var values = attr_data[t][n.name]
+            //     //     console.log(n.group.gIndex,values[prop_index[orderAttr]]);
+            //     // })
+            //     // console.log("************");
+            // }
+
+            for(let t of times){
                 var temp_nodes = t_nodes[t];
+
                 var group_index={
                     1:0,
                     2:0,
@@ -562,15 +609,7 @@ export default {
                 temp_nodes.forEach(n=>{
                     n.group.len = t_g_num[t][n.group.gIndex];
                 })
-                // console.log("************");
-                // temp_nodes.sort((a,b)=>a.group.gIndex-b.group.gIndex);
-                // temp_nodes.forEach(n=>{
-                //     var values = attr_data[t][n.name]
-                //     console.log(n.group.gIndex,values[prop_index[orderAttr]]);
-                // })
-                // console.log("************");
             }
-
             this.sortInGroup(t_nodes);
         },
 
@@ -579,12 +618,14 @@ export default {
         /******* 为每个节点进行组内重新编号 ********/
         // 为了减少边交叉，对group内的节点进行排序，排序规则：1. 同一个group内，连续出现的节点在其他节点之前 2.连续出现的节点顺序保持与前一时刻一致 3.非连续节点出现位置随意
         sortInGroup(t_nodes){
-            var orderAttr = this.orderAttr;
+            var orderAttr = this.orderAttr,
+                times = Object.keys(t_nodes).sort((a,b)=>(+a)-(+b));
+            // console.log(times);
             if(orderAttr == 'cluster'){
                 var count = 0,
                     preNodes,
                     preTime;
-                for(let t in t_nodes){
+                for(let t of times){
                     var sub_nodes = t_nodes[t];
                     /***********  先对子群大小排序 ***********/
                     sub_nodes.sort((a,b)=>{
@@ -697,7 +738,9 @@ export default {
                 var count = 0,
                     preNodes,
                     preTime;
-                for(let t in t_nodes){
+
+                // console.log(times);
+                for(let t of times){
                     var sub_nodes = t_nodes[t];
                     if(count==0){
                         preNodes = sub_nodes;
@@ -746,16 +789,16 @@ export default {
                             var mapByName = d3.map(nodes,d=>d.name);
 
                             if(nodes.length==0) continue;
-                            var tempDataArr = nodes.map(d=>{
-                                return d.group.index;
-                            })
+                            // var tempDataArr = nodes.map(d=>{
+                            //     return d.group.index;
+                            // })
                             for(let n of preNodes){
                                 if(mapByName.has(n.name)){
                                     real_seq.push(mapByName.get(n.name))
                                 }
                             }
                             for(let [i,n] of real_seq.entries()){
-                                n.group.index = tempDataArr[i];
+                                n.group.index = i+1;
                             }
                         }
 
@@ -786,9 +829,15 @@ export default {
             }else{
                 this.sortByAttr(orderAttr);
             }
+            var nodes = this.nodes;
+            // for(let n of nodes){
+            //     if(n.time == "2012" && n.data.cluster.gIndex==1){
+            //         console.log(n.data.name+" : "+n.data.cluster.index);
+            //     }
+            // }
             var endTime = new Date();
             // console.log("sort takes:",(endTime-startTime)/1000);
-            this.generateSankeyData();
+            // this.generateSankeyData();
         },
 
         generateSankeyData(){
@@ -800,8 +849,15 @@ export default {
                 metaNodes = [],
                 metaLinks = [];
 
-            if(orderAttr=="cluster")
+            this.node_classified(orderAttr);
+
+
+            var temp = nodes.filter((n)=>n.time=="2012" && n.data.cluster.gIndex==1);
+
+
+            if(orderAttr=="cluster"){
                 mapNodesByTime = d3.nest().key(n=>n.time).key(n=>n.data.cluster.gIndex).map(nodes);
+            }
             else {
                 mapNodesByTime = d3.nest().key(n=>n.time).key(n=>n.data.group.gIndex).map(nodes);
             };
@@ -815,7 +871,9 @@ export default {
                 var numOfNodes = d3.nest().key(n=>n.time).map(nodes).get(t).length;
                 for(let k of groupKeys){
                     var id = t+""+k;
-                    var tmp_nodes = mapNodesByTime.get(times[i]).get(k);
+                    var tmp_nodes = mapNodesByTime.get(t).get(k);
+                    // nodes.filter((n)=>n.time==t && n.data.cluster.gIndex==k);
+                    // if(t=="2012" && k==1)console.log(tmp_nodes);
                     metaNodes.push({
                         id,
                         data:tmp_nodes,
@@ -829,7 +887,16 @@ export default {
                     start+=tmp_nodes.length;
                 }
             }
-            // console.log(metaNodes);
+            if(orderAttr == "cluster"){
+                for(let metaNode of metaNodes){
+                    metaNode.data.sort((a,b)=>a.data.cluster.index-b.data.cluster.index)
+                }
+            }else{
+                for(let metaNode of metaNodes){
+                    metaNode.data.sort((a,b)=>a.data.group.index-b.data.group.index)
+                }
+            }
+
             // 存储每一个社团中的边的起始点
             var s_start = {},
                 t_start = {};
@@ -924,10 +991,10 @@ export default {
                 timeScale = _this.timeScale,
                 timeArray = _this.timeArray,
                 prop_index = _this.prop_index,
-                nodeColor = d3.color("#f9be86"),
+                nodeColor = d3.color("#475669"),
                 local_t_array = _this.local_t_array,
                 c = _this.classed,
-                another_attr = "t_cc",
+                another_attr = "t_pub",
                 {scales,ego_values_seq} = this.egoAxisScales_seq,
                 axisScaleTop = timeScale.copy(),
                 axisScaleBottom = timeScale.copy();
@@ -999,7 +1066,7 @@ export default {
                               return y_axis_scale_another(d[1])
                           })
                           .attr("fill",function(){
-                              return d3.rgb(101, 147, 237,0.5)
+                              return "#99A9BF"
                           });
             // 节点和线
             var line_path = svg.append("g").datum(domains_1).append("path")
@@ -1113,6 +1180,7 @@ export default {
                 displayCom:false,
                 startColor: [128,128,128],
                 endColor: [90,90,90],
+                comColorMap:"default"
 
             }
             var attrList = Object.keys(index_prop).map(d=>{return index_prop[d]});
@@ -1123,9 +1191,8 @@ export default {
             customContainer.appendChild(gui.domElement);
             gui.add(obj,"orderAttr",['cluster',...attrList]).onChange(_this.changeOrderAttr);
             gui.add(obj,"colorMap",["default",...attrList]).onChange(_this.changeMapAttr);
+            gui.add(obj,"comColorMap",["default",...attrList]).onChange(_this.changeComColorMap);
             gui.add(obj,"displayCom").onChange(_this.drawCommunity);
-            // gui.addColor(obj,"startColor");
-            // gui.addColor(obj,"endColor");
             gui.close();
         },
 
@@ -1135,11 +1202,39 @@ export default {
             var c = this.classed;
 
             if(flag){
+                d3.select("."+c).select(".path-group").style("display","none");
+                d3.select("."+c).select(".node-group").style("display","none");
+
                 var {metaNodes, metaLinks} = this.generateSankeyData(),
+                    prop_index = this.prop_index,
                     timeScale = this.local_timeScale,
                     cal_sankey_node_y = this.cal_sankey_node_y,
+                    cal_y = this.cal_y,
                     get_sankey_path = this.get_sankey_path,
-                    orderAttr = this.orderAttr;
+                    orderAttr = this.orderAttr,
+                    comColorMap = this.comColorMap,
+                    metaNodeColor = "#dca385",
+                    metaNodeColorScale = this.metaNodeColorScale;
+                console.log(comColorMap);
+
+                var opacityScale = d3.scaleLinear().range([0.4,0.9]);
+                var weight_min_max = d3.extent(metaLinks,ml=>ml.weight);
+                opacityScale.domain(weight_min_max);
+                console.log(weight_min_max);
+
+                if(comColorMap != "default"){
+                    let values = [];
+                    for(let [i,n] of metaNodes.entries()){
+                        let value = d3.mean(n.data,d=>d.values[prop_index[comColorMap]])
+                        values.push(value);
+                    }
+                    let min_max = d3.extent(values,d=>d);
+                    let interpolate = d3.scaleLinear().domain(min_max).range([0,1]);
+                    metaNodeColor = (value)=>{
+                        return metaNodeColorScale(interpolate(value))
+                    }
+                    console.log(typeof metaNodeColor);
+                }
 
                 var g_path = d3.select("."+c).select(".sankey").append("g").attr("class","sankey_path"),
                     g_nodes = d3.select("."+c).select(".sankey").append("g").attr("class","sankey_nodes");
@@ -1154,10 +1249,12 @@ export default {
                        })
                        .style("stroke","lightgrey")
                        .style("stroke-width",function(d){
-                           return d.weight*6;
+                           return d.weight*(2*3+2);
                        })
                        .style("fill","none")
-                       .style("opacity",0.5);
+                       .style("opacity",function(d){
+                           return opacityScale(d.weight);
+                       });
 
                 g_nodes.selectAll(".s_node")
                         .data(metaNodes)
@@ -1168,28 +1265,37 @@ export default {
                             return timeScale(d.t)-3;
                         })
                         .attr("y",function(d){
-                            return cal_sankey_node_y(orderAttr,d);
+                            return cal_sankey_node_y(d);
                         })
                         .attr("width",6)
                         .attr("height",function(d){
-                            return d.local_len*(2*3);
+                            return d.local_len*(2*3+2);
                         })
-                        .attr("fill","#92cff4");
+                        .attr("fill",function(d){
+                            if(comColorMap=="default") return metaNodeColor;
+                            else{
+                                var value = d3.mean(d.data,d=>d.values[prop_index[comColorMap]]);
+                                return metaNodeColor(value);
+                            }
+                        });
             }else{
                 d3.select("."+c).select(".sankey").selectAll("g").remove();
+                d3.select("."+c).select(".path-group").style("display","block");
+                d3.select("."+c).select(".node-group").style("display","block");
             }
         },
         get_sankey_path(orderAttr,d){
             var y,
+                svgHeight = this.svgHeight,
                 group_padding = 8,  // 子群之间间距
                 r = 3,          // 圆半径或者rect高度的一半
-                height = 273;   // 绘制空间
+                height = svgHeight-85;   // 绘制空间 273
             var timeScale = this.local_timeScale;
             var context = d3.path();
             var sourceX = timeScale(d.source.t)+r,
                 targetX = timeScale(d.target.t)-r,
-                sourceY = this.cal_sankey_node_y(orderAttr, d.source)+(d.sStart-1)*2*r+d.weight*r,
-                targetY = this.cal_sankey_node_y(orderAttr, d.target)+(d.tStart-1)*2*r+d.weight*r,
+                sourceY = this.cal_sankey_node_y(d.source)+(d.sStart-1)*(2*r+2)+d.weight*(r+1),
+                targetY = this.cal_sankey_node_y(d.target)+(d.tStart-1)*(2*r+2)+d.weight*(r+1),
                 ctr_1 = [(sourceX+targetX)/2,sourceY],
                 ctr_2 = [(sourceX+targetX)/2,targetY];
 
@@ -1199,23 +1305,38 @@ export default {
 
             return context.toString();
         },
-        cal_sankey_node_y(orderAttr, d){
-            var y,
-                // item_padding = 2,   // 节点之间间距
-                group_padding = 8,  // 子群之间间距
-                r = 3,          // 圆半径或者rect高度的一半
-                height = 273;   // 绘制空间
-
-            if(orderAttr == "cluster"){
-                var numOfG = d.numOfGroup,
-                    start = d.startNIndex,
-                    len = d.total_len,
-                    gIndex = d.gIndex;
-                var padding_top = (height-len*2*r-(numOfG-1)*group_padding)/2;
-                return y = padding_top + (start-1)*2*r + (gIndex-1)*group_padding;
+        cal_sankey_node_y(d){
+            var cal_y = this.cal_y,
+                tmp_nodes = d.data;
+            return cal_y(tmp_nodes[0])-3;
+        },
+        changeComColorMap(attr){
+            var prop_index = this.prop_index,
+                c = this.classed,
+                color = this.metaNodeColorScale;
+            this.comColorMap = attr;
+            if(attr == "default"){
+                d3.select("."+c).selectAll(".sankey .s_node").attr("fill","#dca385")
             }else{
+                var mNodes = d3.select("."+c).selectAll(".sankey .s_node").data();
+                var values = [];
+                for(let [i,n] of mNodes.entries()){
+                    var value = d3.mean(n.data,d=>d.values[prop_index[attr]])
+                    values.push(value);
+                }
 
+                var min_max = d3.extent(values,d=>d);
+                var interpolate = d3.scaleLinear().domain(min_max).range([0,1]);
+                d3.select("."+c).selectAll(".sankey .s_node").each(function(d,i){
+                    var d = d3.select(this).data()[0];
+                    var value = d3.mean(d.data,d=>d.values[prop_index[attr]]);
+                    d3.select(this).attr("fill",color(interpolate(value)));
+                })
             }
+
+        },
+        metaNodeColorScale(value){
+            return d3.interpolate("#fee6ce","#e6550d")(value)
         },
         changeOrderAttr(attr){
             this.orderAttr = attr;
@@ -1228,19 +1349,19 @@ export default {
             return timeScale(node.time);
         },
         cal_y(node){
-            var orderAttr =this.orderAttr;
+            var orderAttr =this.orderAttr,
+                svgHeight = this.svgHeight;
             var y,
                 item_padding = 2,   // 节点之间间距
                 group_padding = 8,  // 子群之间间距
                 r = 3,          // 圆半径或者rect高度的一半
-                height = 273;   // 绘制空间
+                height = svgHeight-85;   // 绘制空间 273
 
             if(orderAttr != "cluster"){
                 var scale = d3.scalePoint()
                              .padding(0.5)
                              .domain([1,2,3])
                              .range([height,0])
-
                 var groupIndex = node.data.group.gIndex,
                     len = node.data.group.len,
                     index = node.data.group.index;
@@ -1273,7 +1394,10 @@ export default {
             }else if(mapAttr!="t_venue"){
                 var scale = scales[mapAttr],
                     value = values[prop_index[mapAttr]];
-                return chroma.scale(['#fee0d2', '#de2d26'])(scale(value));
+                // return "red";
+                // console.log(scale(value).toString())
+                // return scale(value).toString();
+                return chroma.scale(['#fee0d2', '#de2d26'])(scale(value)).toString();
             }else{
                 var scale = scales["t_venue"];
                 return scale(values[prop_index[mapAttr]])
@@ -1302,57 +1426,84 @@ export default {
         },
         nodeMouseoverHandler(event){
             var _this = this,
-                attr = _this.orderAttr,
+                // attr = _this.orderAttr,
                 index_prop = _this.index_prop,
+                prop_index = _this.prop_index,
                 svgWidth = _this.svgWidth,
                 svgHeight = _this.svgHeight,
-                orderAttr = _this.orderAttr;
+                orderAttr = _this.orderAttr,
+                color = _this.nodeColor,
+                mapAttr = _this.mapAttr;
+
 
             var {target,offsetX,offsetY} = event,
                 currentElement = event.currentTarget,
                 node = _this.getDataByAttr(d3.select(currentElement), "data-item");
-
+            // console.log(node);
             // var content = '';
             // node.values.forEach((v,i)=>{
             //     content+=`</br>${index_prop[i]}:${v}`;
             // })
-            var content = orderAttr == "cluster"?`gIndex:${node.data.cluster.gIndex}</br>index:${node.data.cluster.index}</br>tIndex:${node.data.cluster.tIndex}`:`gIndex:${node.data.group.gIndex}</br>index:${node.data.group.index}`;
+            // var content = orderAttr == "cluster"?`gIndex:${node.data.cluster.gIndex}</br>index:${node.data.cluster.index}</br>tIndex:${node.data.cluster.tIndex}`:`gIndex:${node.data.group.gIndex}</br>index:${node.data.group.index}`;
+            var content = `name:${node.data.name}</br>${orderAttr}:${orderAttr=="cluster"?"cluster":node.values[prop_index[orderAttr]]}</br>${mapAttr}:${mapAttr=="default"?"default":node.values[prop_index[mapAttr]]}`;
             d3.select("."+_this.classed)
                 .select(".tooltip")
                 .style("left",function(d){
-                    if(svgWidth-offsetX>100)
+                    if(svgWidth-offsetX>130)
                         return offsetX+10+"px"
                     else{
                         return offsetX-120+"px"
                     }
                 })
-                .style("top",offsetY-10+"px")
+                .style("top",offsetY-60+"px")
                 .html(content)
                 // .html(`<span class='hoverName'>${node.data.name}</span>${content}`)
                 .style("display","block");
-
-            d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(){
+            d3.select("."+_this.classed).selectAll(".i_item").each(function(d,i,elems){
                 var d = _this.getDataByAttr(d3.select(this), "data-item");
                 if(d.data.name == node.data.name){
-                    return "gold"
+                    d3.select(this).attr("fill",color(mapAttr,d))
+                                   .attr("r",5);
                 }else{
-                    return 'lightgrey';
+                    d3.select(this).attr("fill","lightgrey").style("opacity",0.6);
                 }
             })
-            d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
+            // d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(){
+            //     var d = _this.getDataByAttr(d3.select(this), "data-item");
+            //     if(d.data.name == node.data.name){
+            //         return color(mapAttr,d);
+            //     }else{
+            //         return 'lightgrey';
+            //     }
+            // }).attr("r",function(){
+            //     var d = _this.getDataByAttr(d3.select(this), "data-item");
+            //     if(d.data.name == node.data.name){
+            //         return 5
+            //     }else{
+            //         return 3;
+            //     }
+            // });
+            d3.select("."+_this.classed).selectAll(".i_path").each(function(d,i){
                 var d = _this.getDataByAttr(d3.select(this), "data-item");
                 if(d[0].data.name == node.data.name){
-                    return "gold"
+                    d3.select(this).style("stroke","#8e8b8b");
                 }else{
-                    return 'lightgrey';
+                    d3.select(this).style("stroke","lightgrey").style("opacity",0.6);
                 }
-            })
+            });
+            // .style("stroke",function(){
+            //     var d = _this.getDataByAttr(d3.select(this), "data-item");
+            //     if(d[0].data.name == node.data.name){
+            //         return "black"
+            //     }else{
+            //         return 'lightgrey';
+            //     }
+            // })
         },
         nodeMouseoutHandle(){
             var _this = this,
                 color = _this.nodeColor,
                 mapAttr = _this.mapAttr;
-                // values = _this.values;
             var {target,offsetX,offsetY} = event;
             d3.select("."+_this.classed)
                 .select(".tooltip")
@@ -1361,10 +1512,16 @@ export default {
             d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(d){
                 var d = _this.getDataByAttr(d3.select(this), "data-item");
                 return color(mapAttr,d);
-            })
+            }).attr("r",3).style("opacity",1);
             d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
                 return 'lightgrey';
-            })
+            }).style("opacity",1);
+        },
+        nodeClickHandler(event){
+            var _this = this;
+            var currentElement = event.currentTarget,
+                node = _this.getDataByAttr(d3.select(currentElement), "data-item");
+            _this.addIndividual(node.data.name);
         }
     },
     components: {
@@ -1401,7 +1558,7 @@ export default {
 
     .axis-container .linepath{
         fill:none;
-        stroke:lightgrey;
+        stroke:#BFBFBF;
         stroke-width:2px;
     }
 

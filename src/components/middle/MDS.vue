@@ -32,6 +32,7 @@ export default {
             },
             groups: {},
             nodesByIndex: {},
+            neighbors:{},
             colors: ["#ea4f4f", "#f25ecd", "#f2aa1a", "#2f74ed"]
         };
     },
@@ -152,6 +153,7 @@ export default {
         draw: function() {
             this.clearCanvas();
             this.drawBackground();
+            // this.drawLinks();
             this.drawNodes();
             this.drawBrush();
 
@@ -165,32 +167,98 @@ export default {
             ctx.fillStyle = "white";
             ctx.fillRect(0, 0, 550, 550);
         },
+
+        drawLinks(){
+            var ctx = this.context,
+                neighbors = this.neighbors,
+                nodesByIndex = this.nodesByIndex,
+                nodes = this.nodes;
+            if(neighbors.length == 0) return;
+            var cnode = this.getSearchNodePosition();
+            for(let [i,n] of nodes.entries()){
+                if(nodesByIndex[i].name in neighbors){
+                    ctx.beginPath();
+                    ctx.strokeStyle = "#aba6a6";
+                    ctx.lineWidth = 2;
+                    ctx.moveTo(cnode[0],cnode[1]);
+                    ctx.lineTo(n[0],n[1]);
+                    ctx.stroke();
+                }
+            }
+        },
+
         drawNodes() {
             var ctx = this.context,
                 nodes = this.nodes,
                 nodesByIndex = this.nodesByIndex,
                 prop_index = this.prop_index,
                 colorScales = this.colorScales,
-                mapAttr = this.mapAttr;
+                mapAttr = this.mapAttr,
+                searchNode = this.searchNode,
+                neighbors = this.neighbors,
+                tempNeighbors = [];
+
             for (let [i,n] of nodes.entries()) {
                 ctx.beginPath();
+                var node = nodesByIndex[i];
+                var value = node.values[prop_index[mapAttr]],
+                    name = node.name;
                 if (n.selected == true) {
                     ctx.fillStyle = n.color;
+                    console.log(nodesByIndex[i].name, nodesByIndex[i].values);
                 } else {
-                    var value = nodesByIndex[i].values[prop_index[mapAttr]];
-                    // console.log(values);
-                    if(mapAttr!="t_venue")
-                        ctx.fillStyle = colorScales[mapAttr](value)
+
+
+                    if(mapAttr=="default")
+                        ctx.fillStyle = "lightgrey";
                     else{
                         ctx.fillStyle = colorScales[mapAttr](value);
                     }
                     // console.log(ctx.fillStyle);
                     // ctx.fillStyle = "lightgrey"
                 }
-                ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
+
+                if(searchNode == name){
+                    // ctx.fillStyle = "orange";
+                    // ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
+                    continue;
+                }else{
+                    ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
+                }
+                if(name in neighbors){
+                    tempNeighbors.push(n);
+                    continue;
+                    // ctx.fillStyle = "red";
+                    // ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
+                }
                 ctx.fill();
                 ctx.closePath();
             }
+
+            if(tempNeighbors.length!=0){
+                // 绘制搜索节点和邻居节点之间的连线
+                this.drawLinks();
+                // 后绘制搜索节点以及邻居节点
+                var cnode = this.getSearchNodePosition();
+                ctx.beginPath();
+                ctx.fillStyle = "#ed892d";
+                ctx.arc(cnode[0], cnode[1], 4, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.closePath();
+
+                for(let [j,n] of tempNeighbors.entries()){
+                    ctx.beginPath();
+                    var node = nodesByIndex[j];
+                    var value = node.values[prop_index[mapAttr]],
+                        name = node.name;
+
+                    ctx.fillStyle = "#ea7272";
+                    ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+
         },
         drawBrush() {
             var ctx = this.context,
@@ -218,6 +286,19 @@ export default {
         },
         mousemove(e) {
             var brush = this.brush;
+            var nodes = this.nodes;
+            var mouseX = e.offsetX,
+                mouseY = e.offsetY,
+                nodesByIndex = this.nodesByIndex;
+            // console.log(mouseX,mouseY);
+            for(let [i,n] of nodes.entries()){
+
+                // console.log(n[0],n[1]);
+                if(Math.pow(mouseX-n[0],2)+Math.pow(mouseY-n[1], 2)<=4){
+                    console.log(true);
+                    console.log(nodesByIndex[i].name, nodesByIndex[i].values);
+                }
+            }
             if (e.shiftKey == true) {
                 brush.target = [e.offsetX, e.offsetY];
                 if (brush.source != undefined && brush.target != undefined)
@@ -271,8 +352,8 @@ export default {
                 //     7:"t_cc",         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
                 //     8:"t_venue"       // 文章发表在1.期刊 2.会议 3.both
                 // },
-                var attrs = ["a_deg", "a_pub", "t_pub"]
-                // var attrs = ["t_avgW", "t_dCent", "t_cc"]
+                // var attrs = ["t_deg", "t_pub", "t_dCent"]
+                var attrs = ["t_avgW", "t_avgC", "t_cc"]
                 series = this.getDistribution(type, attrs);
                 this.drawDistribution(type, attrs, series);
             }
@@ -292,6 +373,17 @@ export default {
         initProperty() {
             this.brushes = [];
             this.brush = [];
+        },
+        getSearchNodePosition(){
+            var nodes = this.nodes,
+                searchNode = this.searchNode,
+                nodesByIndex = this.nodesByIndex;
+            for(let [i,n] of nodes.entries()){
+                if(nodesByIndex[i].name == searchNode){
+                    return n;
+                }else continue;
+            }
+            return false;
         },
         getDistribution(type, attrs) {
             var groups = this.groups,
@@ -587,6 +679,30 @@ export default {
                 //     series: series
                 // });
             }
+        },
+        findNeighbors(){
+
+            var nodesByIndex = this.nodesByIndex,
+                neighbors = this.neighbors,
+                graph = this.graph,
+                time = this.time,
+                searchNode = this.searchNode,
+                links = graph[time].links;
+            //先清空邻居对象
+            for(let key in neighbors) delete neighbors[key];
+            if(searchNode!=''){
+                for(let [i,l] of links.entries()){
+                    if(l.source == searchNode){
+                        neighbors[l.target]=1;
+                    }else if(l.target == searchNode){
+                        neighbors[l.source] = 1;
+                    }else{
+                        continue;
+                    }
+                }
+            }
+            console.log(neighbors);
+
         }
     },
     watch: {
@@ -595,10 +711,20 @@ export default {
         },
         time: function() {
             this.initProperty();
+            this.findNeighbors();
             this.draw();
         },
         mapAttr:function(){
             this.draw();
+        },
+        searchNode:function(){
+            var _this = this;
+            var tid = setTimeout(function(){
+                clearTimeout(tid);
+                _this.findNeighbors()
+                _this.draw();
+            }, 300)
+            // this.draw();
         }
     },
     components: {}

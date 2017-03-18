@@ -257,7 +257,7 @@ export default {
                 .force("outterCharge",d3.forceRepBetCommunity().threshold(threshold).distanceMax(300).strength(function(n,i,nodes){
                     var extent = d3.extent(nodes,d=>d.children.length);
 
-                    var scale = d3.scaleLinear().domain(extent).range([-100,-1200])
+                    var scale = d3.scaleLinear().domain(extent).range([-100,-900])
                     return scale(n.children.length)
                 }))
                 // .force("metaCollide", d3.metaCollide().threshold(threshold).radius(function(d){
@@ -412,16 +412,18 @@ export default {
                 // context.fillStyle = grad
                 ctx.fillStyle = n.fuzzy>threshold?grad:grad;
                 ctx.lineWidth = 0;
-                if(n.fuzzy>threshold){
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = "white";
-                }
+
 
 
                 if(n.hoveron == true || n.name == searchNode){
                     r = r*1.5;
                 }
                 ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+                if(n.fuzzy>threshold){
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = "white";
+                    ctx.stroke();
+                }
                 ctx.fill();
                 if(n.hoveron == true || n.name == searchNode){
                     // r = r*1.5;

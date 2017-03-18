@@ -1,6 +1,6 @@
 <template lang="html">
     <div id="g_network_view">
-        <net-FDA :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode" :backgroundColorMode="backgroundColorMode"></net-FDA>
+        <!-- <net-FDA :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode" :backgroundColorMode="backgroundColorMode"></net-FDA> -->
         <net-MDS :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode" :mapAttr="mapAttr"></net-MDS>
         <div class="arrow arrow-left" @click="preTime">
         </div>
@@ -29,7 +29,7 @@ export default {
         return {
             community: null,
             communityResult: {},
-            type:"MDS",
+            type:"FDA",
             searchNode:'',
             dis_type:"histogram",
             mapAttr:"default",

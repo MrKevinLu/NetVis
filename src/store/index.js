@@ -156,7 +156,7 @@ const getters = {
             graph = state.graph;
         if(attr_data == "" || graph == "") return;
         var prop_domains={},
-            prop_quantile = {},
+            prop_quantile = {"strength":[]},
             scales = {},
             index_prop = state.index_prop
         Object.keys(index_prop).forEach(i=>{
@@ -172,7 +172,9 @@ const getters = {
                 }
             }
         }
+
         // 获取合作强度
+        // console.time()
         // var times = Object.keys(graph),
         //     weightValues = [];
         // for(let t of times){
@@ -184,8 +186,10 @@ const getters = {
         // }
         // weightValues.sort((a,b)=>a-b);
         // var w_q_1 = d3.quantile(weightValues,0.25),
-        //     w_q_3 = d3.quantile(weightValues,0,75);
-        // prop_quantile[strength] = [w_q_1,w_q_]
+            // w_q_3 = d3.quantile(weightValues,0.75);
+        // console.log(w_q_1,w_q_3);
+        // console.timeEnd()
+        prop_quantile["strength"].push(1,2);
         // 获取每个属性对应的四分之一位点和四分之三位点
         for(let attr in prop_domains){
             var values = prop_domains[attr].sort((a,b)=>a-b);

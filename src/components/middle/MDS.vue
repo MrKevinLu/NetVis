@@ -207,10 +207,16 @@ export default {
                     ctx.fillStyle = n.color;
                     console.log(nodesByIndex[i].name, nodesByIndex[i].values);
                 } else {
+                    if(mapAttr=="default"){
+                        if(name=="Daniel A. Keim") ctx.fillStyle = "red";
+                        else if(name == "Kwan-Liu Ma"){
+                            ctx.fillStyle = "purple"
+                        }else{
+                            ctx.fillStyle = "lightgrey";
+                        }
+                        // ctx.fillStyle = "lightgrey";
 
-
-                    if(mapAttr=="default")
-                        ctx.fillStyle = "lightgrey";
+                    }
                     else{
                         ctx.fillStyle = colorScales[mapAttr](value);
                     }
@@ -223,7 +229,10 @@ export default {
                     // ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
                     continue;
                 }else{
-                    ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
+                    if(name=="Daniel A. Keim") ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
+                    else if(name=="Kwan-Liu Ma") ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
+                    else ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
+                    // ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
                 }
                 if(name in neighbors){
                     tempNeighbors.push(n);
@@ -295,8 +304,8 @@ export default {
 
                 // console.log(n[0],n[1]);
                 if(Math.pow(mouseX-n[0],2)+Math.pow(mouseY-n[1], 2)<=4){
-                    console.log(true);
-                    console.log(nodesByIndex[i].name, nodesByIndex[i].values);
+                    // console.log(true);
+                    // console.log(nodesByIndex[i].name, nodesByIndex[i].values);
                 }
             }
             if (e.shiftKey == true) {

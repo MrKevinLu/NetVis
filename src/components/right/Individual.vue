@@ -18,13 +18,11 @@
                         <g class="nodesBrush"></g>
                         <g class="path-group">
 
-                            <path v-for="(path_group,index) in links" v-bind:key="index" :d="generate_d(path_group)" class="i_path" :data-item="JSON.stringify(path_group)" ></path>
+                            <!-- <path v-for="(path_group,index) in links" v-bind:key="index" :d="generate_d(path_group)" class="i_path" :data-item="JSON.stringify(path_group)" ></path> -->
 
-                            <!-- <edge v-for="(l,index) in links" v-bind:key="index" :path_group="l" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :orderAttr='orderAttr' :mapAttr="mapAttr" :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></edge> -->
                         </g>
                         <g class="node-group">
                             <circle v-for="(node,index) in nodes" v-bind:key="index" class="i_item" :data-item="JSON.stringify(node)" :cx="cal_x(node)" :cy="cal_y(node)" r="3" :fill="nodeColor(mapAttr,node)" @click="nodeClickHandler($event)" @mouseover="nodeMouseoverHandler($event)" @mouseout="nodeMouseoutHandle($event)"></circle>
-                            <!-- <node v-for="(n,index) in nodes" v-bind:key="index" :node="n" :index="index" :local_timeScale="local_timeScale" :selectNodes="selectNodes" :cal_x="cal_x" :cal_y="cal_y" :getDataByAttr="getDataByAttr" :color="nodeColor" :len="nodes.length" :orderAttr='orderAttr' :mapAttr='mapAttr' :classed="classed" :hover="true" :changeHover="changeHover" :nodeAttrScales="nodeAttrScales"></node> -->
                         </g>
                         <g class="sankey"></g>
                     </g>
@@ -69,7 +67,7 @@ export default {
             local_y_scale:"",
             is_axis_drawed:false,
             svgWidth: 650,
-            svgHeight: 550, //358
+            svgHeight: 450, //358 450
             axisHeight: 50,
             isShowed:true,
             local_t_array:[...this.timeArray],
@@ -96,17 +94,76 @@ export default {
         },
         // 全局横坐标比例尺
         timeScale() {
+            console.time();
             var timeArray = this.timeArray;
             var width = this.svgWidth - this.margin.left - this.margin.right;
             var t_scale = d3.scalePoint()
                 .padding(0.5)
                 .domain(timeArray)
                 .range([0, width]);
-
+            console.log("timeScale");
+            console.timeEnd();
             return t_scale;
         },
         nodeAttrScales(){
-            return this.quantile_scales.scales;
+            // 局部比例尺
+            console.time()
+            var prop_index = this.prop_index,
+                nodes = this.nodes;
+            if(nodes=="") return "";
+            // var color = d3.interpolate("#fcbfbf","#ff0000");
+            //"#fcdbc2","#a55804"
+            var startC = "#dfcdc2",
+                endC = "#e35000";
+            var color = d3.interpolate(startC,endC);
+            var attr_seg_scales = {};
+            var attrs = Object.keys(prop_index);
+            for(let attr of attrs){
+                attr_seg_scales[attr] = {};
+            }
+            for(let [i,attr] of attrs.entries()){
+                if(attr != "t_venue"){
+                    var num_seg = 10,   // 分段数
+                        current_attr_values = nodes.map(n=>n.values[prop_index[attr]]), // 对应属性上的所有值
+                        [min,max] = d3.extent(current_attr_values),    // 属性最大最小值
+                        interval = (max-min)/num_seg,   // 分段间隔
+                        num_dif_values = Array.from(new Set(current_attr_values)).length, // 对应属性上的不同值的个数
+                        // accumulative = 0,
+                        initColor = startC;
+                        attr_seg_scales[attr].extent = [min,max];
+                        attr_seg_scales[attr].interval = interval;
+                        attr_seg_scales[attr].num_seg = num_seg;
+                    // console.log(attr);
+                    for(let i in d3.range(num_seg)){
+                        var initValue = min+i*interval,
+                            topValue = initValue+interval,
+                            len = new Set(current_attr_values.filter(d=>d<=topValue)).size,
+                            percent = len/num_dif_values,
+                            localScale = d3.scaleLinear().domain([initValue, topValue]).range([0,1]),  // 桶内值线性映射插值
+                            linearScale = d3.scaleLinear().domain([min,max]).range([0,1]),
+                            endColor = color(percent);
+                        var k = "seg"+(+i+1);
+                        attr_seg_scales[attr][k] = (function(initColor, endColor,localScale,linearScale){
+                            return value=>{
+                                return d3.interpolate(startC,endC)(linearScale(value))
+                                // return d3.interpolate(initColor, endColor)(localScale(value))
+                            }
+                        })(initColor, color(percent),localScale,linearScale)
+
+                        initColor = endColor;
+                    }
+                }else{
+                    attr_seg_scales[attr] = d3.scaleOrdinal()
+                                    .domain([1,2,3])
+                                    .range(["red","blue","orange"]);
+                }
+            }
+            console.log("nodeAttrScales")
+            console.timeEnd()
+
+            return attr_seg_scales;
+            // 全局比例尺
+            // return this.quantile_scales.scales;
         },
         // local_t_array(){
         //     var tmp = this.$store.state.local_t_array[this.selected];
@@ -125,7 +182,7 @@ export default {
             return t_scale;
         },
         links(){
-            var startTime = new Date();
+            console.time()
             var nodes = this.nodes,
                 local_t_array = this.local_t_array,
                 coNames,
@@ -198,14 +255,15 @@ export default {
 
             }
             // console.log("links 222222222")
+            console.log("links")
+            console.timeEnd()
 
-            var endTime = new Date();
             // console.log("links takes:",(endTime-startTime)/1000);
             return links;
         },
-        // 合作者数组，{time,data}
+        // 合作者数组，{time,data,values,weight}
         nodes() {
-            var startTime = new Date();
+            console.time();
             var graph = this.$store.state.graph,
                 attr_data = this.$store.state.attr_data;
             if (graph == "") return [];
@@ -225,25 +283,27 @@ export default {
                     if (source == selected) coNodes.push({
                         time: t,
                         data: nodeByName.get(target),
-                        values:attr_data[t][target]
+                        values:attr_data[t][target],
+                        weight:l.weight||l.value
                     })
                     if (target == selected) coNodes.push({
                         time: t,
                         data: nodeByName.get(source),
-                        values:attr_data[t][source]
+                        values:attr_data[t][source],
+                        weight:l.weight||l.value
                     })
                 }
             }
-            // console.log("nodes   1111111")
-            var endTime = new Date();
-            // console.log("nodes takes:",(endTime-startTime)/1000);
-            // console.log("nodes +++++++22222")
+            console.log("nodes")
+            console.timeEnd()
+
             return coNodes;
         },
 
 
         //个体中心每年的属性值数组
         ego_values(){
+            console.time()
             var selected = this.selected,
                 attr_data = this.$store.state.attr_data,
                 t_values = {};
@@ -253,11 +313,14 @@ export default {
                     t_values[t] = attr_data[t][selected]
                 }
             }
+            console.log("ego_values:")
+            console.timeEnd()
             return t_values;
         },
 
         // 个体中心坐标轴y轴比例尺，主要是每个属性的domain
         egoAxisScales_seq(){
+            console.time();
             var startTime = new Date();
             var attr_data = this.attr_data,
                 selected = this.selected,
@@ -287,8 +350,8 @@ export default {
                     scales[k] = d3.scaleOrdinal().domain(values);
                 }
             })
-            var endTime = new Date();
-            // console.log("ego takes:",(endTime-startTime)/1000);
+            console.log("egoAxisScales_seq:")
+            console.timeEnd()
             return {scales,ego_values_seq}
         }
     },
@@ -521,20 +584,21 @@ export default {
             var nodes = this.nodes,
                 attr_data = this.attr_data,
                 times = Array.from(new Set(nodes.map(d=>d.time))).sort((a,b)=>a-b),
-                sortValueArr = [],
+                // sortValueArr = [],
                 // local_t_array = this.local_t_array,
                 quantile = this.quantile_scales.prop_quantile,
                 prop_index = this.prop_index,    // 属性名-序号的映射
                 t_g_num = {},   // 存储每年不同组的节点个数
-                t_nodes = {};   // 按年存节点
-            for(let n of nodes){
-                let t = n.time,
-                    name = n.data.name,
-                    value = n.values[prop_index[orderAttr]];
-                sortValueArr.push(value)
-            }
-            sortValueArr = Array.from(new Set(sortValueArr)).sort((a,b)=>a-b);
-            console.log(sortValueArr);
+                t_nodes = {},   // 按年存节点,内部data
+                nodesByName = {};   // 按年存节点,内部data
+            // for(let n of nodes){
+            //     let t = n.time,
+            //         name = n.data.name,
+            //         value = n.values[prop_index[orderAttr]];
+            //     sortValueArr.push(value)
+            // }
+            // sortValueArr = Array.from(new Set(sortValueArr)).sort((a,b)=>a-b);
+            // console.log(sortValueArr);
             var q_1 = quantile[orderAttr][0],
                 q_3 = quantile[orderAttr][1];
             console.log("排序属性的两个位点：",q_1,q_3);
@@ -545,10 +609,13 @@ export default {
                 t_g_num[t][2]=0;
                 t_g_num[t][3]=0;
             }
+
             for(let n of nodes){
                 t_nodes[n.time].push(n.data);
+                // o_nodes[n.time].push(n);
             }
-
+            nodesByName = d3.nest().key(d=>d.time).key(d=>d.data.name).map(nodes);
+            console.log(nodesByName);
             // 存储group 包含gIndex,index,len,numOfG
 
             // for(let t of times){
@@ -594,10 +661,14 @@ export default {
                 }
                 temp_nodes.forEach(n=>{
                     var values = attr_data[t][n.name],
-                        c_value = values[prop_index[orderAttr]],
+                        c_value = orderAttr != "strength"?values[prop_index[orderAttr]]:nodesByName.get(t).get(n.name)[0].weight,
                         gIndex;
-                    if(c_value<=q_1) gIndex = 1;
-                    else if (c_value<=q_3) gIndex = 2;
+                    if(c_value<=q_1){
+                        gIndex = 1;
+                    }
+                    else if (c_value<=q_3){
+                        gIndex = 2;
+                    }
                     else gIndex = 3;
                     if(!n.group) n.group = {};
                     group_index[gIndex]++
@@ -610,6 +681,32 @@ export default {
                     n.group.len = t_g_num[t][n.group.gIndex];
                 })
             }
+            var getGroupNodesByGIndex = d3.nest().key(d=>d.data.group.gIndex).map(nodes);
+            var groups = Object.keys(group_index),
+                groups_max_len = {},
+                totalMaxLen = 0,
+                heap = {};
+            for(let gIndex of groups){
+                groups_max_len[gIndex] = 0;
+                var max_len = d3.max(getGroupNodesByGIndex.get(gIndex), (d)=>d.data.group.len);
+                totalMaxLen+=max_len;
+                groups_max_len[gIndex] = max_len;
+            }
+
+            for(let index of groups){
+                heap[index] = 0;
+                for(let i=index;i>0;i--){
+                    heap[index]+=groups_max_len[i];
+                }
+            }
+            // groups_max_len.totalMaxLen = totalMaxLen;
+            nodes.forEach(n=>{
+                n.data.group.maxLens = groups_max_len;
+                n.data.group.totalMaxLen = totalMaxLen;
+                n.data.group.heap = heap;
+            })
+            // console.log(heap);
+            // console.log(groups_max_len);
             this.sortInGroup(t_nodes);
         },
 
@@ -1189,7 +1286,7 @@ export default {
 
             var customContainer = d3.select("."+_this.classed).node();
             customContainer.appendChild(gui.domElement);
-            gui.add(obj,"orderAttr",['cluster',...attrList]).onChange(_this.changeOrderAttr);
+            gui.add(obj,"orderAttr",['cluster',"strength",...attrList]).onChange(_this.changeOrderAttr);
             gui.add(obj,"colorMap",["default",...attrList]).onChange(_this.changeMapAttr);
             gui.add(obj,"comColorMap",["default",...attrList]).onChange(_this.changeComColorMap);
             gui.add(obj,"displayCom").onChange(_this.drawCommunity);
@@ -1351,21 +1448,37 @@ export default {
         cal_y(node){
             var orderAttr =this.orderAttr,
                 svgHeight = this.svgHeight;
+            // console.log(node);
             var y,
+                spacePadding = 8,
+                height = svgHeight-85,   // 绘制空间 273
+                r = 3,          // 圆半径或者rect高度的一半
                 item_padding = 2,   // 节点之间间距
                 group_padding = 8,  // 子群之间间距
-                r = 3,          // 圆半径或者rect高度的一半
-                height = svgHeight-85;   // 绘制空间 273
+                new_group_padding = "";
 
             if(orderAttr != "cluster"){
                 var scale = d3.scalePoint()
                              .padding(0.5)
                              .domain([1,2,3])
-                             .range([height,0])
+                             .range([height,0]);
+
                 var groupIndex = node.data.group.gIndex,
+                    heap = node.data.group.heap,
+                    numNodes = heap[groupIndex],
+                    curGroupMaxLen = node.data.group.maxLens[groupIndex],
+                    totalMaxLen = node.data.group.totalMaxLen,
                     len = node.data.group.len,
-                    index = node.data.group.index;
-                y = scale(groupIndex)-((len-1)/2*(item_padding+r))+(index-1)*(item_padding+2*r);
+                    index = node.data.group.index,
+                    numOfG = node.data.group.numOfG,
+                    startPosition;
+                group_padding = (height-2*spacePadding-totalMaxLen*(2*r+item_padding)+numOfG*item_padding)/(numOfG-1);
+                startPosition = height-spacePadding-((numNodes-curGroupMaxLen/2)*(2*r+item_padding)-item_padding*groupIndex)-(groupIndex-1)*group_padding;
+                var disp = (r+item_padding/2)*len-r;
+
+                y = startPosition+(index-1)*(2*r+item_padding)-disp;
+                // y = scale(groupIndex)+(index-1)*(2*r+item_padding)-disp;
+                // y = scale(groupIndex)-((len-1)/2*(item_padding+r))+(index-1)*(item_padding+2*r);
             }else{
 
                 var numOfG = node.data.cluster.numOfG,
@@ -1394,10 +1507,16 @@ export default {
             }else if(mapAttr!="t_venue"){
                 var scale = scales[mapAttr],
                     value = values[prop_index[mapAttr]];
-                // return "red";
-                // console.log(scale(value).toString())
-                // return scale(value).toString();
-                return chroma.scale(['#fee0d2', '#de2d26'])(scale(value)).toString();
+
+                var seg_num = Math.floor((value-scale.extent[0])/scale.interval)+1;
+                if(seg_num == scale.num_seg+1) seg_num--;
+                var k = "seg"+seg_num;
+                if(node.data.name == "Weiwei Cui") console.log(scale[k](value));
+                return scale[k](value);
+
+                // return chroma.scale(['#fee0d2', '#de2d26'])(scale(value)).toString();
+                // return chroma.scale(['#fcbfbf', '#ff0000'])(scale(value)).toString();
+
             }else{
                 var scale = scales["t_venue"];
                 return scale(values[prop_index[mapAttr]])
@@ -1439,13 +1558,14 @@ export default {
             var {target,offsetX,offsetY} = event,
                 currentElement = event.currentTarget,
                 node = _this.getDataByAttr(d3.select(currentElement), "data-item");
-            // console.log(node);
+            console.log(node);
             // var content = '';
             // node.values.forEach((v,i)=>{
             //     content+=`</br>${index_prop[i]}:${v}`;
             // })
+            var orderValue = orderAttr == "cluster"?"cluster":(orderAttr == "strength"?node.weight:node.values[prop_index[orderAttr]]);
             // var content = orderAttr == "cluster"?`gIndex:${node.data.cluster.gIndex}</br>index:${node.data.cluster.index}</br>tIndex:${node.data.cluster.tIndex}`:`gIndex:${node.data.group.gIndex}</br>index:${node.data.group.index}`;
-            var content = `name:${node.data.name}</br>${orderAttr}:${orderAttr=="cluster"?"cluster":node.values[prop_index[orderAttr]]}</br>${mapAttr}:${mapAttr=="default"?"default":node.values[prop_index[mapAttr]]}`;
+            var content = `name:${node.data.name}</br>${orderAttr}:${orderValue}</br>${mapAttr}:${mapAttr=="default"?"default":node.values[prop_index[mapAttr]]}`;
             d3.select("."+_this.classed)
                 .select(".tooltip")
                 .style("left",function(d){
@@ -1464,25 +1584,23 @@ export default {
                 if(d.data.name == node.data.name){
                     d3.select(this).attr("fill",color(mapAttr,d))
                                    .attr("r",5);
+                                //    .classed("nodeHoverOnOne",true);
                 }else{
                     d3.select(this).attr("fill","lightgrey").style("opacity",0.6);
                 }
+                // if(d.data.name == node.data.name && d.data.name == "Yingcai Wu"){
+                //     d3.select(this).attr("fill",color(mapAttr,d))
+                //                    .attr("r",5)
+                //                    .classed("nodeHoverOnOne",true);
+                // }else if(d.data.name == node.data.name && d.data.name == "Weiwei Cui"){
+                //     d3.select(this).attr("fill",color(mapAttr,d))
+                //                    .attr("r",5)
+                //                    .classed("nodeHoverOnTwo",true);
+                // }else{
+                //     if(d.data.name!="Yingcai Wu" && d.data.name!="Weiwei Cui")
+                //         d3.select(this).attr("fill","lightgrey").style("opacity",0.6);
+                // }
             })
-            // d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(){
-            //     var d = _this.getDataByAttr(d3.select(this), "data-item");
-            //     if(d.data.name == node.data.name){
-            //         return color(mapAttr,d);
-            //     }else{
-            //         return 'lightgrey';
-            //     }
-            // }).attr("r",function(){
-            //     var d = _this.getDataByAttr(d3.select(this), "data-item");
-            //     if(d.data.name == node.data.name){
-            //         return 5
-            //     }else{
-            //         return 3;
-            //     }
-            // });
             d3.select("."+_this.classed).selectAll(".i_path").each(function(d,i){
                 var d = _this.getDataByAttr(d3.select(this), "data-item");
                 if(d[0].data.name == node.data.name){
@@ -1491,14 +1609,16 @@ export default {
                     d3.select(this).style("stroke","lightgrey").style("opacity",0.6);
                 }
             });
-            // .style("stroke",function(){
+            // d3.select("."+_this.classed).selectAll(".i_path").each(function(d,i){
             //     var d = _this.getDataByAttr(d3.select(this), "data-item");
-            //     if(d[0].data.name == node.data.name){
-            //         return "black"
+            //     if(d[0].data.name == node.data.name && (d[0].data.name!="Yingcai Wu" || d[0].data.name!="Weiwei Cui")){
+            //         d3.select(this).style("stroke","#8e8b8b");
             //     }else{
-            //         return 'lightgrey';
+            //         if(d[0].data.name!="Yingcai Wu" && d[0].data.name!="Weiwei Cui")
+            //             d3.select(this).style("stroke","lightgrey").style("opacity",0.6);
             //     }
-            // })
+            // });
+
         },
         nodeMouseoutHandle(){
             var _this = this,
@@ -1509,10 +1629,13 @@ export default {
                 .select(".tooltip")
                 .style("display","none");
 
-            d3.select("."+_this.classed).selectAll(".i_item").attr("fill",function(d){
-                var d = _this.getDataByAttr(d3.select(this), "data-item");
-                return color(mapAttr,d);
-            }).attr("r",3).style("opacity",1);
+            d3.select("."+_this.classed).selectAll(".i_item")
+                .attr("fill",function(d){
+                    var d = _this.getDataByAttr(d3.select(this), "data-item");
+                    return color(mapAttr,d);
+                })
+                .attr("r",3).style("opacity",1)
+                .classed("nodeHoverOn",false);
             d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
                 return 'lightgrey';
             }).style("opacity",1);
@@ -1637,6 +1760,14 @@ export default {
         background-color: rgba(119, 107, 107,0.7);
         color:white;
 
+    }
+    .nodeHoverOnOne{
+        stroke:black;
+        stroke-width:2px;
+    }
+    .nodeHoverOnTwo{
+        stroke:#f71845;
+        stroke-width:2px;
     }
     .i_path{
         fill:none;

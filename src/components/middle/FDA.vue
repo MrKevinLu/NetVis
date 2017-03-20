@@ -111,7 +111,7 @@ export default {
             // var min_max = d3.extent(degs);
             var scale = d3.scaleLinear()
                             .domain(deg_min_max)
-                            .range([4,7]);
+                            .range([2,4]);
             return scale;
         },
         degScale:function(){
@@ -195,7 +195,12 @@ export default {
                     // var interpolate1 = d3.interpolate(0.4,0.7);
                     // var interpolate1 = d3.interpolate(0,0.5);
                     // randomColorForNodes[n.community] = d3.interpolateRainbow(Math.random()*1);
-                    randomColorForNodes[n.community] = d3.hsl(360*Math.random(),Math.random(),interpolate(Math.random()));
+                    if(backgroundColorMode){
+                        // randomColorForNodes[n.community] = d3.hsl(200+160*Math.random(),0.4+Math.random()*0.5,interpolate(Math.random()));
+                    }
+                    randomColorForNodes[n.community] = d3.hsl(200+160*Math.random(),0.4+Math.random()*0.5,interpolate(Math.random()));
+
+                    // randomColorForNodes[n.community] = d3.hsl(360*Math.random(),Math.random(),interpolate(Math.random()));
                 }
             }
 
@@ -339,7 +344,7 @@ export default {
                 degScale = this.degScale,
                 newKScale = this.newKScale,
                 backgroundColorMode = this.backgroundColorMode;
-
+            ctx.globalAlpha=0.8;
             for(let shadow of shadowData){
                 var totalNodes = shadow.nodes,
                     leftNodes = totalNodes.filter(n=>degScale(n.deg)>=newKScale(currentK)),
@@ -358,9 +363,11 @@ export default {
                 }
                 grad.addColorStop(0,c);
                 ctx.fillStyle = grad;
+
                 ctx.arc(x0, y0, r, 0, 2 * Math.PI);
                 ctx.fill();
             }
+            ctx.globalAlpha=1;
             // ctx.beginPath()
         },
         drawNodes(){
@@ -420,9 +427,9 @@ export default {
                 }
                 ctx.arc(cx, cy, r, 0, 2 * Math.PI);
                 if(n.fuzzy>threshold){
-                    ctx.lineWidth = 4;
-                    ctx.strokeStyle = "white";
-                    ctx.stroke();
+                    // ctx.lineWidth = 4;
+                    // ctx.strokeStyle = "black";
+                    // ctx.stroke();
                 }
                 ctx.fill();
                 if(n.hoveron == true || n.name == searchNode){

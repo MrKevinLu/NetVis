@@ -18,7 +18,7 @@
                         <g class="nodesBrush"></g>
                         <g class="path-group">
 
-                            <!-- <path v-for="(path_group,index) in links" v-bind:key="index" :d="generate_d(path_group)" class="i_path" :data-item="JSON.stringify(path_group)" ></path> -->
+                            <path v-for="(path_group,index) in links" v-bind:key="index" :d="generate_d(path_group)" class="i_path" :data-item="JSON.stringify(path_group)" ></path>
 
                         </g>
                         <g class="node-group">
@@ -67,7 +67,7 @@ export default {
             local_y_scale:"",
             is_axis_drawed:false,
             svgWidth: 650,
-            svgHeight: 450, //358 450
+            svgHeight: 358, //358 450
             axisHeight: 50,
             isShowed:true,
             local_t_array:[...this.timeArray],
@@ -145,8 +145,8 @@ export default {
                         var k = "seg"+(+i+1);
                         attr_seg_scales[attr][k] = (function(initColor, endColor,localScale,linearScale){
                             return value=>{
-                                return d3.interpolate(startC,endC)(linearScale(value))
-                                // return d3.interpolate(initColor, endColor)(localScale(value))
+                                // return d3.interpolate(startC,endC)(linearScale(value))
+                                return d3.interpolate(initColor, endColor)(localScale(value))
                             }
                         })(initColor, color(percent),localScale,linearScale)
 

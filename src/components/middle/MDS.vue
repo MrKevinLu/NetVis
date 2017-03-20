@@ -205,7 +205,7 @@ export default {
                     name = node.name;
                 if (n.selected == true) {
                     ctx.fillStyle = n.color;
-                    console.log(nodesByIndex[i].name, nodesByIndex[i].values);
+                    // console.log(nodesByIndex[i].name, nodesByIndex[i].values);
                 } else {
                     if(mapAttr=="default"){
                         if(name=="Daniel A. Keim") ctx.fillStyle = "red";

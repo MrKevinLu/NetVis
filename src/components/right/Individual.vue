@@ -78,13 +78,18 @@ export default {
                 bottom: 10
             },
             selectNodes:[],
-            isShownOfCom:false //group
+            isShownOfCom:false, //group
+            locked:{},
+            lockedColor:["black","red","orange"],
+            lockedNum:0,
+            lockedToColor:{}
         };
     },
     computed: {
         ...mapGetters([
             "quantile_scales",
-            "prop_index"
+            "prop_index",
+            "neighbors"
         ]),
         index_prop(){
             return this.$store.state.index_prop;
@@ -92,9 +97,11 @@ export default {
         hasInitial(){
             return this.$store.state.hasInitial;
         },
+
         // 全局横坐标比例尺
         timeScale() {
             console.time();
+            console.log(this.neighbors);
             var timeArray = this.timeArray;
             var width = this.svgWidth - this.margin.left - this.margin.right;
             var t_scale = d3.scalePoint()
@@ -296,7 +303,7 @@ export default {
             }
             console.log("nodes")
             console.timeEnd()
-
+            // coNodes.forEach(n=>n.isLocked = false);
             return coNodes;
         },
 
@@ -1091,6 +1098,7 @@ export default {
                 nodeColor = d3.color("#475669"),
                 local_t_array = _this.local_t_array,
                 c = _this.classed,
+                first_attr = "t_deg",
                 another_attr = "t_pub",
                 {scales,ego_values_seq} = this.egoAxisScales_seq,
                 axisScaleTop = timeScale.copy(),
@@ -1099,7 +1107,7 @@ export default {
 
 
 
-            var domains_1 = ego_values_seq["t_deg"];
+            var domains_1 = ego_values_seq[first_attr];
             var domains_2 = ego_values_seq[another_attr];
 
             // if(selected == "Daniel A. Keim"){
@@ -1113,7 +1121,7 @@ export default {
                             ])
                             .on("brush", brushing)
                             .on("end", brushended)
-            var y_axis_scale_deg = scales["t_deg"].range([height - padding, padding]);
+            var y_axis_scale_deg = scales[first_attr].range([height - padding, padding]);
 
             var y_axis_scale_another = scales[another_attr].range([height - padding, padding]);
 
@@ -1164,6 +1172,23 @@ export default {
                           })
                           .attr("fill",function(){
                               return "#99A9BF"
+                          })
+                          .on("mouseover",function(d){
+                              d3.select(this).attr("fill","white")
+                              d3.select("."+_this.classed)
+                                  .select(".tooltip")
+                                  .style("left",function(){
+                                      return axisScaleBottom(d[0])+10+"px"
+                                  })
+                                  .style("top",y_axis_scale_deg(d[1])+"px")
+                                  .html(`${another_attr}:${d[1]}`)
+                                  .style("display","block");
+                          })
+                          .on("mouseout",function(d){
+                              d3.select(this).attr("fill","#99A9BF");
+                              d3.select("."+_this.classed)
+                                  .select(".tooltip")
+                                  .style("display","none");
                           });
             // 节点和线
             var line_path = svg.append("g").datum(domains_1).append("path")
@@ -1181,7 +1206,24 @@ export default {
                 .attr("cx", d => axisScaleBottom(d[0]))
                 .attr("cy", d => y_axis_scale_deg(d[1]))
                 .attr("r", 3)
-                .attr("fill", nodeColor);
+                .attr("fill", nodeColor)
+                .on("mouseover",function(d){
+                    d3.select(this).attr("fill","white")
+                    d3.select("."+_this.classed)
+                        .select(".tooltip")
+                        .style("left",function(){
+                            return axisScaleBottom(d[0])+10+"px"
+                        })
+                        .style("top",y_axis_scale_deg(d[1])+"px")
+                        .html(`${first_attr}:${d[1]}`)
+                        .style("display","block");
+                })
+                .on("mouseout",function(d){
+                    d3.select(this).attr("fill",nodeColor);
+                    d3.select("."+_this.classed)
+                        .select(".tooltip")
+                        .style("display","none");
+                });
 
             function brushended() {
                 if (!d3.event.sourceEvent) return; // Only transition after input.
@@ -1272,24 +1314,30 @@ export default {
             var _this = this,
                 index_prop = _this.index_prop;
             var obj = {
-                orderAttr: "cluster",   // 排序选择
-                colorMap: "default",    // 节点颜色映射选择
-                displayCom:false,
-                startColor: [128,128,128],
-                endColor: [90,90,90],
-                comColorMap:"default"
-
+                order: "cluster",   // 排序选择
+                nodeColor: "default",    // 节点颜色映射选择
+                showOverview:false,
+                comColor:"default",
+                circleAttr:"t_deg",
+                rectAttr:"t_pub",
+                single:false
             }
             var attrList = Object.keys(index_prop).map(d=>{return index_prop[d]});
             // console.log(attrList);
             var gui = new dat.GUI({autoPlace: false});
-
+            var f1 = gui.addFolder("layout");
+            f1.add(obj,"order",['cluster',"strength",...attrList]).onChange(_this.changeOrderAttr);
+            f1.add(obj,"single")
             var customContainer = d3.select("."+_this.classed).node();
             customContainer.appendChild(gui.domElement);
-            gui.add(obj,"orderAttr",['cluster',"strength",...attrList]).onChange(_this.changeOrderAttr);
-            gui.add(obj,"colorMap",["default",...attrList]).onChange(_this.changeMapAttr);
-            gui.add(obj,"comColorMap",["default",...attrList]).onChange(_this.changeComColorMap);
-            gui.add(obj,"displayCom").onChange(_this.drawCommunity);
+            // gui.add(obj,"orderAttr",['cluster',"strength",...attrList]).onChange(_this.changeOrderAttr);
+            gui.add(obj,"nodeColor",["default",...attrList]).onChange(_this.changeMapAttr);
+            gui.add(obj,"comColor",["default",...attrList]).onChange(_this.changeComColorMap);
+            gui.add(obj,"showOverview").onChange(_this.drawCommunity);
+            var f2 = gui.addFolder("axisAttrs");
+            f2.add(obj,"circleAttr",attrList);
+            f2.add(obj,"rectAttr",attrList);
+
             gui.close();
         },
 
@@ -1453,8 +1501,8 @@ export default {
                 spacePadding = 8,
                 height = svgHeight-85,   // 绘制空间 273
                 r = 3,          // 圆半径或者rect高度的一半
-                item_padding = 2,   // 节点之间间距
-                group_padding = 8,  // 子群之间间距
+                item_padding = 3.5,   // 节点之间间距  2
+                group_padding = 10,  // 子群之间间距  8
                 new_group_padding = "";
 
             if(orderAttr != "cluster"){
@@ -1552,13 +1600,18 @@ export default {
                 svgHeight = _this.svgHeight,
                 orderAttr = _this.orderAttr,
                 color = _this.nodeColor,
-                mapAttr = _this.mapAttr;
+                mapAttr = _this.mapAttr,
+                locked = _this.locked,
+                neighbors = _this.neighbors;
 
-
+            // console.log(_this.neighbors);
             var {target,offsetX,offsetY} = event,
                 currentElement = event.currentTarget,
-                node = _this.getDataByAttr(d3.select(currentElement), "data-item");
-            console.log(node);
+                node = _this.getDataByAttr(d3.select(currentElement), "data-item"),
+                time = node.time;
+                // console.log(node.time);
+
+            // console.log(node);
             // var content = '';
             // node.values.forEach((v,i)=>{
             //     content+=`</br>${index_prop[i]}:${v}`;
@@ -1579,72 +1632,141 @@ export default {
                 .html(content)
                 // .html(`<span class='hoverName'>${node.data.name}</span>${content}`)
                 .style("display","block");
+
+            if(_this.lockedNum>0) return;
+
             d3.select("."+_this.classed).selectAll(".i_item").each(function(d,i,elems){
                 var d = _this.getDataByAttr(d3.select(this), "data-item");
-                if(d.data.name == node.data.name){
-                    d3.select(this).attr("fill",color(mapAttr,d))
-                                   .attr("r",5);
-                                //    .classed("nodeHoverOnOne",true);
-                }else{
-                    d3.select(this).attr("fill","lightgrey").style("opacity",0.6);
+                if(!locked[d.data.name]){
+                    if(d.data.name == node.data.name){
+                        d3.select(this).attr("fill",color(mapAttr,d))
+                                       .attr("r",5).style("opacity",1);
+                                    //    .classed("nodeHoverOnOne",true);
+                    }else if(d.time==time && neighbors[time][node.data.name].includes(d.data.name)){
+                        d3.select(this).attr("fill","gold");
+                    }else{
+                        d3.select(this).attr("r",3).attr("fill","lightgrey").style("opacity",0.6);
+                    }
                 }
-                // if(d.data.name == node.data.name && d.data.name == "Yingcai Wu"){
-                //     d3.select(this).attr("fill",color(mapAttr,d))
-                //                    .attr("r",5)
-                //                    .classed("nodeHoverOnOne",true);
-                // }else if(d.data.name == node.data.name && d.data.name == "Weiwei Cui"){
-                //     d3.select(this).attr("fill",color(mapAttr,d))
-                //                    .attr("r",5)
-                //                    .classed("nodeHoverOnTwo",true);
-                // }else{
-                //     if(d.data.name!="Yingcai Wu" && d.data.name!="Weiwei Cui")
-                //         d3.select(this).attr("fill","lightgrey").style("opacity",0.6);
-                // }
+
+
             })
             d3.select("."+_this.classed).selectAll(".i_path").each(function(d,i){
                 var d = _this.getDataByAttr(d3.select(this), "data-item");
-                if(d[0].data.name == node.data.name){
-                    d3.select(this).style("stroke","#8e8b8b");
-                }else{
-                    d3.select(this).style("stroke","lightgrey").style("opacity",0.6);
+                if(!locked[d[0].data.name]){
+                    if(d[0].data.name == node.data.name){
+                        d3.select(this).style("stroke","grey");
+                    }else{
+                        d3.select(this).style("stroke","lightgrey").style("opacity",0.6);
+                    }
                 }
             });
-            // d3.select("."+_this.classed).selectAll(".i_path").each(function(d,i){
-            //     var d = _this.getDataByAttr(d3.select(this), "data-item");
-            //     if(d[0].data.name == node.data.name && (d[0].data.name!="Yingcai Wu" || d[0].data.name!="Weiwei Cui")){
-            //         d3.select(this).style("stroke","#8e8b8b");
-            //     }else{
-            //         if(d[0].data.name!="Yingcai Wu" && d[0].data.name!="Weiwei Cui")
-            //             d3.select(this).style("stroke","lightgrey").style("opacity",0.6);
-            //     }
-            // });
+
+
 
         },
         nodeMouseoutHandle(){
             var _this = this,
                 color = _this.nodeColor,
-                mapAttr = _this.mapAttr;
+                mapAttr = _this.mapAttr,
+                locked = _this.locked;
             var {target,offsetX,offsetY} = event;
             d3.select("."+_this.classed)
                 .select(".tooltip")
                 .style("display","none");
 
-            d3.select("."+_this.classed).selectAll(".i_item")
-                .attr("fill",function(d){
-                    var d = _this.getDataByAttr(d3.select(this), "data-item");
-                    return color(mapAttr,d);
-                })
-                .attr("r",3).style("opacity",1)
-                .classed("nodeHoverOn",false);
-            d3.select("."+_this.classed).selectAll(".i_path").style("stroke",function(){
-                return 'lightgrey';
-            }).style("opacity",1);
+            if(_this.lockedNum>0) return;
+
+            d3.select("."+_this.classed).selectAll(".i_item").each(function(d,i){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+
+                if(!locked[d.data.name]){
+                    d3.select(this).attr("fill",color(mapAttr,d))
+                    .attr("r",3)
+                    .style("opacity",1);
+                    // .classed("nodeHoverOnOne",false);
+                }
+            })
+
+            d3.select("."+_this.classed).selectAll(".i_path").each(function(d,i){
+                var d = _this.getDataByAttr(d3.select(this), "data-item");
+                if(!locked[d[0].data.name]){
+                    d3.select(this).style("stroke",'lightgrey')
+                                   .style("opacity",1);
+                }
+            })
         },
         nodeClickHandler(event){
             var _this = this;
             var currentElement = event.currentTarget,
-                node = _this.getDataByAttr(d3.select(currentElement), "data-item");
-            _this.addIndividual(node.data.name);
+                locked = this.locked,
+                node = _this.getDataByAttr(d3.select(currentElement), "data-item"),
+                lockName,
+                color = _this.nodeColor,
+                mapAttr = _this.mapAttr,
+
+                lockedColor = _this.lockedColor,
+                lockedToColor = _this.lockedToColor;
+            if(locked[node.data.name]) {
+                locked[node.data.name] = !locked[node.data.name];
+                delete lockedColor[node.data.name];
+                _this.lockedNum--;
+            }else{
+                locked[node.data.name] = true;
+                lockedToColor[node.data.name] = lockedColor[_this.lockedNum];
+                _this.lockedNum++;
+            }
+
+            if(_this.lockedNum==0){
+                console.log("OK")
+                d3.select("."+_this.classed).selectAll(".i_item").each(function(d,i){
+                    var d = _this.getDataByAttr(d3.select(this), "data-item");
+                        d3.select(this).attr("fill",color(mapAttr,d))
+                        .attr("r",3)
+                        .attr("stroke","none")
+                        .style("opacity",1);
+
+                })
+
+                d3.select("."+_this.classed).selectAll(".i_path").each(function(d,i){
+                    var d = _this.getDataByAttr(d3.select(this), "data-item");
+
+                    d3.select(this).style("stroke",'lightgrey')
+                                   .style("opacity",1);
+                })
+            }else{
+                d3.select("."+_this.classed).selectAll(".i_item").each(function(d,i,elems){
+                    var d = _this.getDataByAttr(d3.select(this), "data-item");
+
+                    if(locked[d.data.name]){
+                        d3.select(this).attr("fill",color(mapAttr,d))
+                                       .attr("r",5)
+                                       .attr("stroke",lockedToColor[d.data.name])
+                                       .attr("stroke-width",2)
+                                       .style("opacity",1);
+                    }else{
+                        d3.select(this).attr("fill","lightgrey")
+                            .attr("r",3)
+                            .attr("stroke","none")
+                            .style("opacity",0.6);
+                    }
+                });
+
+                d3.select("."+_this.classed).selectAll(".i_path").each(function(d,i){
+                    var d = _this.getDataByAttr(d3.select(this), "data-item");
+                    if(locked[d[0].data.name]){
+                        console.log(2222)
+                        d3.select(this).style("stroke",'grey')
+                                       .style("opacity", 1);
+                    }else{
+                        d3.select(this).style("stroke",'lightgrey')
+                                       .style("opacity",0.6);
+                    }
+                })
+
+
+            }
+
         }
     },
     components: {
@@ -1763,11 +1885,11 @@ export default {
     }
     .nodeHoverOnOne{
         stroke:black;
-        stroke-width:2px;
+        stroke-width:1px;
     }
     .nodeHoverOnTwo{
         stroke:#f71845;
-        stroke-width:2px;
+        stroke-width:1px;
     }
     .i_path{
         fill:none;

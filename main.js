@@ -3,7 +3,7 @@ import App from './src/App.vue'
 import store from './src/store'
 import ElementUI from 'element-ui'
 import 'element-ui/lib/theme-default/index.css'
-// import './src/css/global.less'
+import './src/css/global.less'
 import { getAllData } from './src/store/actions'
 import * as types from './src/store/mutation-types'
 // var startTime = new Date();

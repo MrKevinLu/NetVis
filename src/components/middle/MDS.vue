@@ -33,7 +33,8 @@ export default {
             groups: {},
             nodesByIndex: {},
             neighbors:{},
-            colors: ["#ea4f4f", "#f25ecd", "#f2aa1a", "#2f74ed"]
+            colors: ["#ea4f4f", "#f25ecd", "#f2aa1a", "#2f74ed"],
+            mouseOnNode:""
         };
     },
     computed: {
@@ -195,6 +196,7 @@ export default {
                 colorScales = this.colorScales,
                 mapAttr = this.mapAttr,
                 searchNode = this.searchNode,
+                mouseOnNode = this.mouseOnNode,
                 neighbors = this.neighbors,
                 tempNeighbors = [];
 
@@ -208,13 +210,13 @@ export default {
                     // console.log(nodesByIndex[i].name, nodesByIndex[i].values);
                 } else {
                     if(mapAttr=="default"){
-                        if(name=="Daniel A. Keim") ctx.fillStyle = "red";
-                        else if(name == "Kwan-Liu Ma"){
-                            ctx.fillStyle = "purple"
-                        }else{
-                            ctx.fillStyle = "lightgrey";
-                        }
-                        // ctx.fillStyle = "lightgrey";
+                        // if(name=="Daniel A. Keim") ctx.fillStyle = "red";
+                        // else if(name == "Kwan-Liu Ma"){
+                        //     ctx.fillStyle = "purple"
+                        // }else{
+                        //     ctx.fillStyle = "lightgrey";
+                        // }
+                        ctx.fillStyle = "lightgrey";
 
                     }
                     else{
@@ -224,15 +226,15 @@ export default {
                     // ctx.fillStyle = "lightgrey"
                 }
 
-                if(searchNode == name){
-                    // ctx.fillStyle = "orange";
-                    // ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
+                if(searchNode == name || mouseOnNode == name){
+                    ctx.fillStyle = "orange";
+                    ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
                     continue;
                 }else{
-                    if(name=="Daniel A. Keim") ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
-                    else if(name=="Kwan-Liu Ma") ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
-                    else ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
-                    // ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
+                    // if(name=="Daniel A. Keim") ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
+                    // else if(name=="Kwan-Liu Ma") ctx.arc(n[0], n[1], 4, 0, 2 * Math.PI);
+                    // else ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
+                    ctx.arc(n[0], n[1], 2, 0, 2 * Math.PI);
                 }
                 if(name in neighbors){
                     tempNeighbors.push(n);
@@ -304,6 +306,8 @@ export default {
 
                 // console.log(n[0],n[1]);
                 if(Math.pow(mouseX-n[0],2)+Math.pow(mouseY-n[1], 2)<=4){
+                    this.mouseOnNode = nodesByIndex[i].name;
+                    break;
                     // console.log(true);
                     // console.log(nodesByIndex[i].name, nodesByIndex[i].values);
                 }
@@ -361,7 +365,7 @@ export default {
                 //     7:"t_cc",         // 聚集系数，节点的邻居之间的边与两两相连的边数（n(n-1)/2）的占比，时变
                 //     8:"t_venue"       // 文章发表在1.期刊 2.会议 3.both
                 // },
-                // var attrs = ["t_deg", "t_pub", "t_dCent"]
+                // var attrs = ["t_deg", "t_pub"]
                 var attrs = ["t_avgW", "t_avgC", "t_cc"]
                 series = this.getDistribution(type, attrs);
                 this.drawDistribution(type, attrs, series);
@@ -453,6 +457,7 @@ export default {
                                 // color.s = color.s;
                                 color.l = color.l-0.14;
                             }
+
                             series.push({
                                 "name": name,
                                 "data": arrays[i],
@@ -734,7 +739,15 @@ export default {
                 _this.draw();
             }, 300)
             // this.draw();
-        }
+        },
+        // mouseOnNode:function(){
+        //     var _this = this;
+        //     var tid = setTimeout(function(){
+        //         clearTimeout(tid);
+        //         _this.findNeighbors()
+        //         _this.draw();
+        //     }, 300)
+        // }
     },
     components: {}
 };

@@ -20,11 +20,13 @@ const state = {
     currentTime:"2013",
     hasInitial:false,
     clickNode:"",
-    selected:["Huamin Qu","Daniel A. Keim","Kwan-Liu Ma"], //"Huamin Qu","Kwan-Liu Ma"
+    selected:["Thomas Ertl","David S. Ebert"], //["Huamin Qu","Daniel A. Keim","Kwan-Liu Ma","Thomas Ertl","David S. Ebert"]
     local_t_array: {
-        "Huamin Qu":initTimes,
-        "Daniel A. Keim":initTimes,
-        "Kwan-Liu Ma":initTimes
+        // "Huamin Qu":initTimes,
+        "Thomas Ertl":initTimes,
+        "David S. Ebert":initTimes
+        // "Daniel A. Keim":initTimes,
+        // "Kwan-Liu Ma":initTimes
     },
     index_prop:{
         0:"a_deg",      // 总的节点度，非时变
@@ -62,6 +64,38 @@ const getters = {
             prop_index[index_prop[k]] = k;
         })
         return prop_index;
+    },
+    neighbors:(state,getters)=>{
+        // console.log(11111222222);
+        if(state.graph){
+            var graph = state.graph,
+                neighbors = {},
+                times = Object.keys(graph);
+
+            for(let t of times){
+                neighbors[t] = {};
+            }
+            for(let t of times){
+                var nodes = graph[t].nodes,
+                    links = graph[t].links;
+                for(let l of links){
+                    var sName = l.source,
+                        tName = l.target;
+                    if(neighbors[t][sName]){
+                        neighbors[t][sName].push(tName)
+                    }else{
+                        neighbors[t][sName] = [tName]
+                    }
+                    if(neighbors[t][tName]){
+                        neighbors[t][tName].push(sName)
+                    }else{
+                        neighbors[t][tName] = [sName]
+                    }
+                }
+            }
+        }
+        console.log(neighbors);
+        return neighbors;
     },
     // 全网属性
     g_attr_data:(state, getters)=>{

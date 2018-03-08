@@ -111,7 +111,7 @@ export default {
             // var min_max = d3.extent(degs);
             var scale = d3.scaleLinear()
                             .domain(deg_min_max)
-                            .range([2,4]);
+                            .range([2,6]);   //[2,7]
             return scale;
         },
         degScale:function(){
@@ -188,9 +188,9 @@ export default {
                 if(randomColorForNodes[n.community] == undefined){
                     var interpolate;
                     if(backgroundColorMode){
-                        interpolate = d3.interpolate(0,0.9);
+                        interpolate = d3.interpolate(0,0.6);
                     }else{
-                        interpolate = d3.interpolate(0.4,0.7)
+                        interpolate = d3.interpolate(0.4,0.9)
                     }
                     // var interpolate1 = d3.interpolate(0.4,0.7);
                     // var interpolate1 = d3.interpolate(0,0.5);
@@ -198,9 +198,10 @@ export default {
                     if(backgroundColorMode){
                         // randomColorForNodes[n.community] = d3.hsl(200+160*Math.random(),0.4+Math.random()*0.5,interpolate(Math.random()));
                     }
-                    randomColorForNodes[n.community] = d3.hsl(200+160*Math.random(),0.4+Math.random()*0.5,interpolate(Math.random()));
 
-                    // randomColorForNodes[n.community] = d3.hsl(360*Math.random(),Math.random(),interpolate(Math.random()));
+                    // randomColorForNodes[n.community] = d3.hsl(200+160*Math.random(),Math.random(),interpolate(Math.random()));
+
+                    randomColorForNodes[n.community] = d3.hsl(360*Math.random(),Math.random(),interpolate(Math.random()));
                 }
             }
 
@@ -248,7 +249,7 @@ export default {
 
             var simulation = d3.forceSimulation()
                 .force("innerLink",d3.forceLinkInCommunity().threshold(threshold).id(function(d){return d.id||d.name;}).distance(function(d){
-                    return 1;
+                    return 1;  //1
                 }))
                 .force("innerCollide",d3.forceCollide().radius(function(d){
                     return rScale(d.deg);
@@ -262,7 +263,7 @@ export default {
                 .force("outterCharge",d3.forceRepBetCommunity().threshold(threshold).distanceMax(300).strength(function(n,i,nodes){
                     var extent = d3.extent(nodes,d=>d.children.length);
 
-                    var scale = d3.scaleLinear().domain(extent).range([-100,-900])
+                    var scale = d3.scaleLinear().domain(extent).range([-100,-900])  //[-100,-900] [-10,-30]
                     return scale(n.children.length)
                 }))
                 // .force("metaCollide", d3.metaCollide().threshold(threshold).radius(function(d){
@@ -279,9 +280,18 @@ export default {
                 .force("fuzzyLink",d3.forceLinkFuzzy().threshold(threshold).id(d=>d.gIndex).distance(l=>1/l.weight))
                 .force("center",d3.forceCenter(width/2,height/2));
 
+            // var simulation = d3.forceSimulation()
+            //     .force("link", d3.forceLink().id(function(d) { return d.id||d.name; }).distance(function(d){return 5}))
+            //     .force("charge", d3.forceManyBody().strength(function(d){return -5}))
+            //     .force("center", d3.forceCenter(width / 2, height / 2));
+
+
             simulation.nodes(nodes)
                       .on("tick",ticked);
 
+
+            // simulation.force("link")
+            //     .links(links);
             simulation.force("innerLink")
                      .links(links);
             simulation.force("outterLink")
@@ -325,11 +335,12 @@ export default {
                 height = this.canvasSize.height,
                 backgroundColorMode = this.backgroundColorMode;
             ctx.beginPath()
-            if(backgroundColorMode){
-                ctx.fillStyle="white";
-            }else{
-                ctx.fillStyle="black";
-            }
+            ctx.fillStyle = backgroundColorMode;
+            // if(backgroundColorMode){
+            //     ctx.fillStyle="white";
+            // }else{
+            //     ctx.fillStyle="black";
+            // }
             ctx.fillRect(0,0,width,height);
         },
         drawConnectedGroupsShadows(){
@@ -353,15 +364,21 @@ export default {
                 var {x0,y0,r,gIndex} = shadow;
                 // context.fillStyle = "rgba(119, 113, 113,0.5)"
                 var grad  = ctx.createRadialGradient(x0,y0,0,x0,y0,r)
-                var c = d3.color(color(gIndex));
+                var c = d3.color(color(gIndex)),
+                    colorStop = d3.color(backgroundColorMode);
                 // c.opacity = kScale(currentK);
                 c.opacity = opacity;
-                if(backgroundColorMode){
-                    grad.addColorStop(1,`rgba(255,255,255,${opacity})`)
-                }else{
-                    grad.addColorStop(1,`rgba(0,0,0,${opacity})`)
-                }
-                grad.addColorStop(0,c);
+                colorStop.opacity = opacity;
+
+                // if(backgroundColorMode){
+                //     grad.addColorStop(1,`rgba(255,255,255,${opacity})`)
+                //     // grad.addColorStop(1,`rgba(0,0,0,${opacity})`)
+                // }else{
+                //     grad.addColorStop(1,`rgba(0,0,0,${opacity})`)
+                // }
+                grad.addColorStop(1,colorStop);
+                // grad.addColorStop(0,c);
+                grad.addColorStop(0.5,c);
                 ctx.fillStyle = grad;
 
                 ctx.arc(x0, y0, r, 0, 2 * Math.PI);

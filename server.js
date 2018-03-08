@@ -19,6 +19,10 @@ app.use(webpackDevMiddleware(compiler,{
 app.use(webpackHotMiddleware(compiler));
 
 app.use(express.static(__dirname))
+app.get("/user",(req,res)=>{
+    res.send(req);
+    res.send("user!");
+})
 
 const port = process.env.PORT || 8090;
 module.exports = app.listen(port, ()=>{

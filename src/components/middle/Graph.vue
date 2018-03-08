@@ -1,6 +1,6 @@
 <template lang="html">
     <div id="g_network_view">
-        <net-FDA :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode" :backgroundColorMode="backgroundColorMode"></net-FDA>
+        <net-FDA :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode" :backgroundColorMode="backgroundColorMode" :backgroundColorFlag="backgroundColorFlag"></net-FDA>
         <net-MDS :type="type" :comDistribute="dis_type" :time="currentTime" :searchNode="searchNode" :mapAttr="mapAttr"></net-MDS>
         <div class="arrow arrow-left" @click="preTime">
         </div>
@@ -33,7 +33,8 @@ export default {
             searchNode:'',
             dis_type:"histogram",
             mapAttr:"default",
-            backgroundColorMode:true   // true 底为白色
+            backgroundColorMode:"white",   // true 底为白色
+            backgroundColorFlag:true
         };
     },
 
@@ -77,8 +78,9 @@ export default {
             var obj = {
                 layout:_this.type,
                 dis_type:_this.dis_type,
-                mapAttr:"default",
-                background:true
+                nodeColor:"default",
+                background:true,
+                bgColor:"#ffae23"
             }
             // var attrList = Object.keys(index_prop).map(d=>{return index_prop[d]});
             var gui = new dat.GUI({autoPlace: false});
@@ -87,8 +89,20 @@ export default {
             customContainer.appendChild(gui.domElement);
             gui.add(obj,"layout",['MDS','FDA']).onChange(_this.toggleView);
             gui.add(obj,"dis_type",['radar','histogram']).onChange(_this.toggleDistributionView);
-            gui.add(obj,"mapAttr",attrs.concat("default")).onChange(_this.changeMDS_mapAttr);
-            gui.add(obj,"background").onChange(_this.toggleBackgroundColorMode);
+            gui.add(obj,"nodeColor",attrs.concat("default")).onChange(_this.changeMDS_mapAttr);
+            // gui.add(obj,"background").onChange(_this.toggleBackgroundColorMode);
+            gui.addColor(obj,"bgColor").onChange(function(value){
+                console.log(value);
+                _this.toggleBackgroundColorMode(value);
+                _this.toggleBackgroundColorFlag();
+            });
+
+            var f1 = gui.addFolder('Data Filter');
+            attrs.forEach((d,i)=>{
+                obj[`${d}>`] = 0;
+                f1.add(obj,`${d}>`)
+            })
+
             gui.close();
         },
         toggleView(type){
@@ -97,8 +111,11 @@ export default {
         toggleDistributionView(value){
             this.dis_type = value;
         },
-        toggleBackgroundColorMode(){
-            this.backgroundColorMode = !this.backgroundColorMode;
+        toggleBackgroundColorMode(value){
+            this.backgroundColorMode = value;
+        },
+        toggleBackgroundColorFlag(){
+            this.backgroundColorFlag = !this.backgroundColorFlag;
         },
         changeMDS_mapAttr(value){
             this.mapAttr = value;

@@ -2,6 +2,9 @@
     <div class="sortView">
 
         <div class="controls">
+            <div class="tooltip">
+
+            </div>
             <div class="sortAttr clearfix">
                 <div v-for="attr in attrs" class="legend" :class="{color1:attr=='Deg',color2:attr=='Pub',color3:attr=='Both',activeSort:attr==sortType}" @click="changeSortType(attr)">{{attr}}</div>
             </div>
@@ -125,7 +128,12 @@ export default {
 
     },
 
-
+    mounted:function(){
+        d3.select(".weight").select("input").on("mouseover",function(){
+            var value = d3.select(".weight").select("input").node().value;
+            d3.select(this).attr("title",value);
+        })
+    },
     methods: {
         ...mapActions([
             "addIndividual"
@@ -179,14 +187,14 @@ export default {
             var index_to_node = this.index_to_node;
             var x = e.layerX,
                 y = e.layerY;
-            d3.select(".sortView").select(".tooltip")
+            d3.select(".nodeList").select(".tooltip")
                     .style("left",x+5+"px")
                     .style("top",y-25+"px")
                     .text(index_to_node[id])
                     .style("display","block");
         },
         mouseoutHandle(){
-            d3.select(".sortView .tooltip").style("display","none");
+            d3.select(".nodeList .tooltip").style("display","none");
             this.hovered = "";
         },
         selectHandler(id){
